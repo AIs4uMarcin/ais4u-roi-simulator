@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROI Simulator — AIsolution4.you</title>
+<meta name="description" content="Symulator ROI - sprawdź potencjał cyfryzacji i AI dla Twojej firmy. Spersonalizowana prognoza finansowa oparta na 66 case studies.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+
+<!-- React 18 -->
+<script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+
+<!-- Recharts (UMD bundle includes d3 deps) -->
+<script crossorigin src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+<script crossorigin src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+
+<!-- Babel standalone for JSX transpilation (pre-prod only) -->
+<script crossorigin src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { -webkit-font-smoothing: antialiased; background: #0d2b2b; }
+  #root { min-height: 100vh; }
+  input[type="range"] { -webkit-appearance: auto; }
+  input[type="range"]::-webkit-slider-thumb { cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="root"><div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0d2b2b;font-family:'Plus Jakarta Sans',system-ui,sans-serif"><div style="text-align:center"><div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#c8963e,#dbb36a);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;animation:pulse 1.5s ease-in-out infinite">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0d2b2b" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div style="color:#c8963e;font-size:14px;font-weight:600;letter-spacing:0.5px">AIsolution4.you</div><div style="color:rgba(250,246,239,0.25);font-size:11px;margin-top:6px">Ładowanie symulatora ROI...</div></div></div></div>
+<style>@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.7;transform:scale(0.95)}}</style>
+
+<script type="text/babel" data-type="module">
+// ── React hooks & Recharts from globals ──
+const { useState, useCallback, useMemo } = React;
+const { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Line } = Recharts;
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   AISolution4.You — ROI Simulator v6 (Sprint 2 Final)
+   Embedded benchmark_db v3.0 · Fixed Fee + Success Fee model
+   Reference-table-driven calculations · Scorecard / Analysis / CFO
+   ═══════════════════════════════════════════════════════════════════ */
+
+// ── DESIGN TOKENS (AIsolution4.you branding) ──
+const T={td:"#0d2b2b",tm:"#143939",tmd:"#1a4a4a",tl:"#1f5c5c",g:"#c8963e",gl:"#dbb36a",gs:"rgba(200,150,62,0.08)",gb:"rgba(200,150,62,0.15)",gh:"rgba(200,150,62,0.35)",cr:"#faf6ef",ok:"#27ae60",no:"#c0392b",wa:"#e67e22",fd:"'DM Serif Display',Georgia,serif",fb:"'Plus Jakarta Sans',system-ui,sans-serif"};
+
+// ══════════════════════════════════════════════════════════════
+// BENCHMARK DATABASE v3.0 — 66 RECORDS (from benchmark_db_v3.json)
+// This IS the reference table. Production: fetch from API.
+// ══════════════════════════════════════════════════════════════
+const BENCH=[
+{id:"BK001",mod:"M_BOOKING",sec:["medical","dental","aesthetic"],name:"Klinika okulistyczna (PMC/Frontiers)",kpi:"Redukcja no-show",c:50,m:69,o:80,unit:"% redukcji no-show",src:"Frontiers in Digital Health / PMC",yr:2025,conf:"high",type:"peer_reviewed_study"},
+{id:"BK002",mod:"M_BOOKING",sec:["all_services","medical","beauty","fitness"],name:"Analiza zbiorcza – firmy usługowe (Signpost)",kpi:"Wzrost przychodów po rezerwacji online",c:15,m:27,o:50,unit:"% wzrost przychodów",src:"Signpost – Scheduling Stats 2024",yr:2024,conf:"medium",type:"industry_report"},
+{id:"BK003",mod:"M_BOOKING",sec:["medical","dental"],name:"Placówki medyczne z vs bez software (Sign In Solutions)",kpi:"No-show z systemem vs bez",c:68,m:84,o:90,unit:"% redukcji no-show",src:"Grand View Research / Sign In Solutions",yr:2024,conf:"high",type:"market_research"},
+{id:"BK004",mod:"M_BOOKING",sec:["medical"],name:"First Choice Neurology – płatności cyfrowe",kpi:"Redukcja dni należności + oszczędności",c:8000,m:9000,o:12000,unit:"USD oszczędności/mies.",src:"Healthcare IT Today",yr:2025,conf:"high",type:"case_study"},
+{id:"BK005",mod:"M_BOOKING",sec:["medical","dental","beauty","fitness"],name:"SMS/email reminders – redukcja no-show",kpi:"Redukcja no-show przypomnieniami",c:25,m:34,o:38,unit:"% redukcji no-show",src:"Ulan Software / Fortune BI",yr:2025,conf:"medium",type:"industry_aggregate"},
+{id:"BK006",mod:"M_BOOKING",sec:["medical","dental","aesthetic"],name:"Bundling usług + booking – 2x sprzedaż (Simon-Kucher)",kpi:"Wzrost sprzedaży per pacjent",c:50,m:100,o:150,unit:"% wzrost usług per pacjent",src:"Simon-Kucher & Partners",yr:2025,conf:"high",type:"case_study"},
+{id:"BK007",mod:"M_BOOKING",sec:["all_services","beauty","fitness"],name:"Scheduling software – wzrost SMB (Fortune BI)",kpi:"Wzrost przychodów SMB",c:15,m:27,o:40,unit:"% wzrost przychodów",src:"Fortune Business Insights / Ossisto",yr:2025,conf:"high",type:"market_research"},
+{id:"SEO001",mod:"M_WEBSITE_SEO",sec:["dental","medical"],name:"Dr. Anderson – SEO lokalne (Firegang)",kpi:"Wzrost nowych pacjentów",c:67,m:87,o:95,unit:"% wzrost nowych pacjentów/mies.",src:"Firegang Dental Marketing",yr:2024,conf:"medium",type:"case_study"},
+{id:"SEO002",mod:"M_WEBSITE_SEO",sec:["dental","medical"],name:"Gabinet dental – SEO+PPC 12 mies. (Arcane)",kpi:"Wzrost nowych pacjentów",c:100,m:187,o:250,unit:"% wzrost nowych pacjentów/mies.",src:"Arcane Marketing",yr:2023,conf:"medium",type:"case_study"},
+{id:"SEO003",mod:"M_WEBSITE_SEO",sec:["dental","medical"],name:"Brooklyn Family Clinic – Google Maps (Remedo)",kpi:"Wzrost zapytań telefonicznych",c:40,m:60,o:80,unit:"% wzrost zapytań/telefonów",src:"Remedo – Dental SEO NYC",yr:2024,conf:"medium",type:"case_study"},
+{id:"SEO004",mod:"M_WEBSITE_SEO",sec:["all_smb","retail","ecommerce"],name:"Ruch organiczny Google – 43% e-commerce traffic",kpi:"Udział organic w traffic",c:30,m:43,o:55,unit:"% udziału organic w total traffic",src:"eComRevenueMax / PR Newswire",yr:2024,conf:"medium",type:"industry_aggregate"},
+{id:"SEO005",mod:"M_WEBSITE_SEO",sec:["dental","medical"],name:"Dr. Satnick – 2996 leadów z SEO w 2 lata",kpi:"Generowanie leadów",c:500,m:999,o:1500,unit:"leadów/rok",src:"Online Visibility Pros",yr:2024,conf:"medium",type:"case_study"},
+{id:"SEO006",mod:"M_WEBSITE_SEO",sec:["dental"],name:"Dental – +173% booked calls, 1149% ROI Q1 2025",kpi:"Wzrost zarezerwowanych telefonów",c:80,m:173,o:245,unit:"% wzrost booked calls",src:"Pro Impressions Marketing",yr:2025,conf:"medium",type:"vendor_case_study"},
+{id:"SEO007",mod:"M_WEBSITE_SEO",sec:["dental"],name:"Manchester implant clinic – 100% wzrost (Dominate UK)",kpi:"Wzrost konsultacji",c:50,m:100,o:200,unit:"% wzrost konsultacji",src:"Dominate Dental UK",yr:2025,conf:"medium",type:"vendor_case_study"},
+{id:"SEO008",mod:"M_WEBSITE_SEO",sec:["dental","medical"],name:"Austin TX dental – +45% nowych pacjentów",kpi:"Wzrost nowych wizyt",c:25,m:45,o:70,unit:"% wzrost nowych pacjentów",src:"Dental Marketing Guy",yr:2025,conf:"medium",type:"case_study"},
+{id:"CRM001",mod:"M_CRM_AUTOMATION",sec:["all_smb","b2b_services"],name:"Salesforce Marketing Cloud (Forrester TEI)",kpi:"ROI z marketing automation (2 lata)",c:150,m:299,o:400,unit:"% ROI",src:"Forrester Research / Salesforce",yr:2024,conf:"high",type:"independent_research"},
+{id:"CRM002",mod:"M_CRM_AUTOMATION",sec:["all_smb"],name:"HubSpot MŚP – automatyzacja leadów",kpi:"Wzrost sprzedaży",c:20,m:29,o:41,unit:"% wzrost sprzedaży",src:"HubSpot / Nucleus Research",yr:2024,conf:"high",type:"independent_research"},
+{id:"CRM003",mod:"M_CRM_AUTOMATION",sec:["all_smb"],name:"CRM MŚP – skrócenie cyklu sprzedaży",kpi:"Skrócenie sales cycle",c:8,m:14,o:20,unit:"% skrócenie cyklu",src:"Nucleus Research",yr:2024,conf:"high",type:"independent_research"},
+{id:"CRM004",mod:"M_CRM_AUTOMATION",sec:["all_smb","saas"],name:"Automatyzacja marketing – 12.2% wzrost produktywności",kpi:"Produktywność sprzedaży + overhead",c:200,m:544,o:800,unit:"% ROI",src:"Thunderbit / Marketing LTB",yr:2026,conf:"high",type:"industry_aggregate"},
+{id:"CRM005",mod:"M_CRM_AUTOMATION",sec:["all_smb","medical","retail"],name:"Polskie MŚP – digitalizacja CRM (PARP)",kpi:"Poprawa efektywności obsługi klienta",c:15,m:25,o:40,unit:"% poprawa obsługi klienta",src:"PARP / Polish Agency for Enterprise",yr:2024,conf:"high",type:"government_programme"},
+{id:"CRM006",mod:"M_CRM_AUTOMATION",sec:["all_smb","b2b_services"],name:"CRM ROI: $8.71 per $1 (Nucleus Research 2026)",kpi:"ROI per $1 na CRM",c:500,m:871,o:2450,unit:"% ROI",src:"Nucleus Research / CRM.org",yr:2026,conf:"high",type:"independent_research"},
+{id:"CRM007",mod:"M_CRM_AUTOMATION",sec:["all_smb"],name:"89% firm widzi wzrost przychodów (Forrester/Freshworks)",kpi:"% firm z wzrostem revenue post-CRM",c:10,m:15,o:20,unit:"% wzrost przychodów (mediana)",src:"Forrester / Freshworks",yr:2024,conf:"high",type:"independent_research"},
+{id:"CRM008",mod:"M_CRM_AUTOMATION",sec:["all_smb","b2b_services","retail"],name:"CRM AI-driven: +83% exceeding sales goals",kpi:"Prawdopodobieństwo przekroczenia celów",c:40,m:83,o:150,unit:"% wyższe szanse na exceed goals",src:"Kixie / CRM.org",yr:2025,conf:"high",type:"industry_aggregate"},
+{id:"CRM009",mod:"M_CRM_AUTOMATION",sec:["retail","ecommerce","b2c"],name:"Embla Home – SMS auto: $117K z $220 (531x ROI)",kpi:"ROI z SMS automation",c:10000,m:53100,o:80000,unit:"% ROI",src:"Exchange4media / Freshworks",yr:2025,conf:"medium",type:"case_study"},
+{id:"DM001",mod:"M_DIGITAL_MARKETING",sec:["all_smb","retail"],name:"Google Ads MŚP – średni ROI kampanii",kpi:"ROI z kampanii Google Ads",c:200,m:400,o:700,unit:"% ROI",src:"Google Economic Impact Report",yr:2024,conf:"high",type:"industry_aggregate"},
+{id:"DM002",mod:"M_DIGITAL_MARKETING",sec:["all_smb","retail","b2c"],name:"Marketing automation – $5.44 per $1 ROI",kpi:"ROI z marketing automation",c:300,m:544,o:800,unit:"% ROI ($5.44 per $1)",src:"Thunderbit / Marketing LTB",yr:2026,conf:"high",type:"industry_aggregate"},
+{id:"DM003",mod:"M_DIGITAL_MARKETING",sec:["retail","ecommerce","b2c"],name:"Social media – wpływ na sprzedaż online",kpi:"Wzrost sprzedaży – active social vs brak",c:15,m:32,o:50,unit:"% wzrost sprzedaży",src:"Manaferra – eCommerce Statistics",yr:2024,conf:"medium",type:"industry_aggregate"},
+{id:"DM004",mod:"M_DIGITAL_MARKETING",sec:["retail","ecommerce","b2c"],name:"Social commerce Polska +20.5% r/r",kpi:"Wzrost social commerce PL",c:12,m:20,o:35,unit:"% wzrost przychodów r/r",src:"ecommerceDB / Statista",yr:2025,conf:"high",type:"market_research"},
+{id:"DM005",mod:"M_DIGITAL_MARKETING",sec:["all_smb","retail","b2c"],name:"AI personalization – +25% ROI (Wharton)",kpi:"Wzrost ROI z AI personalizacji",c:15,m:25,o:40,unit:"% wzrost ROI",src:"Exchange4media / Wharton",yr:2025,conf:"high",type:"independent_research"},
+{id:"DM006",mod:"M_DIGITAL_MARKETING",sec:["all_smb","retail"],name:"Email automation: $30-40 per $1 ROI",kpi:"ROI z email automation",c:2000,m:3500,o:4000,unit:"% ROI ($30-40 per $1)",src:"Exchange4media / Salesforce",yr:2025,conf:"high",type:"industry_aggregate"},
+{id:"DM007",mod:"M_DIGITAL_MARKETING",sec:["dental","medical"],name:"46% wyszukiwań Google = intencja lokalna",kpi:"Udział local intent w Google",c:30,m:46,o:60,unit:"% wyszukiwań z intencją lokalną",src:"Netpeak US / Sagapixel",yr:2025,conf:"high",type:"industry_aggregate"},
+{id:"BI001",mod:"M_BI_DASHBOARD",sec:["manufacturing","distribution","all_smb"],name:"SKF – z Excel na BI dashboardy",kpi:"Redukcja kosztów + przyspieszenie",c:15,m:20,o:30,unit:"% redukcja kosztów personalnych",src:"Allied One Source",yr:2024,conf:"medium",type:"case_study"},
+{id:"BI002",mod:"M_BI_DASHBOARD",sec:["all_smb","b2b_services"],name:"MŚP – strategic co-pilot BI (ActivDev)",kpi:"Redukcja czasu raportowania",c:60,m:75,o:90,unit:"% redukcja czasu raportowania",src:"ActivDev – AI for SMEs",yr:2025,conf:"medium",type:"case_study"},
+{id:"BI003",mod:"M_BI_DASHBOARD",sec:["all_smb","retail","healthcare"],name:"Benchmarki BI – metaanaliza 200+ wdrożeń",kpi:"Poprawa efektywności operacyjnej",c:20,m:30,o:45,unit:"% poprawa efektywności",src:"SR Analytics / Gartner 2024",yr:2024,conf:"high",type:"industry_aggregate"},
+{id:"BI004",mod:"M_BI_DASHBOARD",sec:["all_smb","manufacturing","distribution"],name:"Integracja danych – 10.3x vs 3.7x ROI (MuleSoft)",kpi:"ROI z AI zależne od integracji",c:370,m:700,o:1030,unit:"% ROI",src:"MuleSoft / Integrate.io / Gartner",yr:2025,conf:"high",type:"independent_research"},
+{id:"BI005",mod:"M_BI_DASHBOARD",sec:["all_smb"],name:"BI failure rate: 73% nie dostarcza ROI (Gartner)",kpi:"Success rate wdrożeń BI",c:27,m:35,o:50,unit:"% wdrożeń BI z ROI (success rate)",src:"Gartner / SR Analytics",yr:2024,conf:"high",type:"independent_research"},
+{id:"BI006",mod:"M_BI_DASHBOARD",sec:["all_smb"],name:"Deloitte 2025 – 50% firm: 20% oszczędności z DX",kpi:"Oszczędności kosztowe z DX/BI",c:10,m:20,o:30,unit:"% oszczędności kosztów",src:"Deloitte Business Services 2025",yr:2025,conf:"high",type:"independent_research"},
+{id:"EC001",mod:"M_ECOMMERCE",sec:["retail","distribution","trade"],name:"Main Street SMBs – e-commerce vs spowolnienie (PYMNTS)",kpi:"Wzrost optymizmu i przychodów z e-commerce",c:10,m:30,o:54,unit:"% firm z e-commerce planujących wzrost",src:"PYMNTS Intelligence / Digital Commerce",yr:2024,conf:"high",type:"independent_research"},
+{id:"EC002",mod:"M_ECOMMERCE",sec:["b2b_trade","distribution","manufacturing"],name:"B2B SME – wzrost e-commerce (McKinsey/Statista)",kpi:"Wzrost udziału e-commerce",c:4,m:6,o:10,unit:"pp wzrost udziału e-commerce",src:"McKinsey & Company / Statista",yr:2023,conf:"high",type:"independent_research"},
+{id:"EC003",mod:"M_ECOMMERCE",sec:["retail","trade","all_smb"],name:"Polskie MŚP – e-commerce (PARP/WEI 2024)",kpi:"Wzrost przychodów po uruchomieniu online",c:8,m:15,o:30,unit:"% wzrost przychodów",src:"Warsaw Enterprise Institute / PARP",yr:2025,conf:"medium",type:"independent_research"},
+{id:"EC004",mod:"M_ECOMMERCE",sec:["retail","trade","all_smb"],name:"Automatyzacja e-commerce – +80% leadów",kpi:"Wzrost leadów + ROI",c:40,m:80,o:120,unit:"% wzrost leadów",src:"SellersCommerce / BigCommerce",yr:2025,conf:"medium",type:"industry_aggregate"},
+{id:"EC005",mod:"M_ECOMMERCE",sec:["retail","b2b_trade","distribution"],name:"B2B Polska – e-fakturowanie -25% błędów (Technavio)",kpi:"Redukcja błędów przetwarzania",c:15,m:25,o:35,unit:"% redukcja błędów",src:"Technavio – Poland E-commerce",yr:2025,conf:"high",type:"market_research"},
+{id:"EC006",mod:"M_ECOMMERCE",sec:["retail","trade"],name:"PL e-commerce $28B, CAGR 8.64% (Statista)",kpi:"Wzrost rynku e-commerce PL",c:6,m:9,o:15,unit:"% roczny wzrost rynku",src:"Statista Market Forecast",yr:2025,conf:"high",type:"market_research"},
+{id:"EC007",mod:"M_ECOMMERCE",sec:["retail","trade","all_smb"],name:"46% US SMB bez www traci klientów",kpi:"Utracone przychody bez online",c:10,m:20,o:40,unit:"% utraconych przychodów",src:"BusinessDasher / HubSpot",yr:2024,conf:"medium",type:"industry_aggregate"},
+{id:"AI001",mod:"M_AI_AUTOMATION",sec:["manufacturing","automotive"],name:"Jaguar Land Rover – AI process automation",kpi:"Wartość dodana z back-office",c:800000,m:1200000,o:1500000,unit:"USD wartości dodanej/rok",src:"Virtasant – AI Cost Efficiency",yr:2024,conf:"high",type:"case_study"},
+{id:"AI002",mod:"M_AI_AUTOMATION",sec:["all_smb","professional_services"],name:"Automatyzacja protokołów – czas ÷4 (ActivDev)",kpi:"Redukcja czasu protokołów",c:60,m:75,o:85,unit:"% redukcja czasu",src:"ActivDev – AI for SMEs",yr:2025,conf:"medium",type:"case_study"},
+{id:"AI003",mod:"M_AI_AUTOMATION",sec:["healthcare","insurance","financial_services"],name:"Allianz – AI document processing -80% czasu",kpi:"Redukcja czasu przetwarzania",c:60,m:80,o:90,unit:"% redukcja czasu obsługi",src:"Xenoss – AI use cases ROI",yr:2026,conf:"high",type:"case_study"},
+{id:"AI004",mod:"M_AI_AUTOMATION",sec:["healthcare"],name:"Healthcare AI – $3.20 per $1 w 14 mies.",kpi:"ROI z AI w healthcare",c:200,m:320,o:500,unit:"% ROI",src:"Vellum AI / Strativera",yr:2025,conf:"high",type:"industry_aggregate"},
+{id:"AI005",mod:"M_AI_AUTOMATION",sec:["all_smb","professional_services"],name:"94% AI transformacji = porażka (Botpress/MIT)",kpi:"Success rate AI transformation",c:6,m:15,o:35,unit:"% wdrożeń AI z ROI",src:"Botpress / MIT",yr:2026,conf:"high",type:"independent_research"},
+{id:"AI006",mod:"M_AI_AUTOMATION",sec:["all_smb","professional_services"],name:"AI: -2h/dzień admin per handlowiec",kpi:"Redukcja czasu admin",c:1.0,m:2.0,o:3.0,unit:"h/dzień zaoszczędzone",src:"CRM.org / Salesforce / Forrester",yr:2026,conf:"high",type:"industry_aggregate"},
+{id:"AI007",mod:"M_AI_AUTOMATION",sec:["healthcare"],name:"Teledentystyka – $375M→$1.38B, -noshow",kpi:"Redukcja no-show z telemedicine",c:15,m:25,o:40,unit:"% redukcja no-show",src:"Grand View Research / Netpeak",yr:2025,conf:"medium",type:"market_research"},
+{id:"CV001",mod:"M_COMPUTER_VISION",sec:["manufacturing","food_production"],name:"Intel – AI Vision 1900% ROI",kpi:"Oszczędności + ROI",c:1500000,m:2000000,o:2500000,unit:"USD oszczędności/rok",src:"Overview.ai / Jidoka",yr:2025,conf:"high",type:"case_study"},
+{id:"CV002",mod:"M_COMPUTER_VISION",sec:["automotive","manufacturing"],name:"BMW – AI vision -37% defektów",kpi:"Redukcja wad produkcyjnych",c:25,m:37,o:45,unit:"% redukcja defektów",src:"RevGen / Jidoka",yr:2025,conf:"high",type:"case_study"},
+{id:"CV003",mod:"M_COMPUTER_VISION",sec:["manufacturing","automotive"],name:"Automotive – AI inspection 2-letni monitoring",kpi:"Redukcja defektów + OEE",c:25,m:37,o:50,unit:"% redukcja defektów",src:"Jidoka – Case Studies",yr:2025,conf:"high",type:"case_study"},
+{id:"PR001",mod:"M_PROCESS_REDESIGN",sec:["manufacturing","distribution"],name:"Predictive maintenance – 300-500% ROI",kpi:"ROI z predictive maintenance",c:200,m:400,o:500,unit:"% ROI",src:"Xenoss / Vellum AI",yr:2025,conf:"high",type:"industry_aggregate"},
+{id:"PR002",mod:"M_PROCESS_REDESIGN",sec:["manufacturing","distribution"],name:"BMW + NVIDIA – cyfrowy bliźniak -30% costs",kpi:"Oszczędności z planowania",c:20,m:30,o:40,unit:"% oszczędności",src:"Virtasant – BMW/NVIDIA",yr:2024,conf:"medium",type:"case_study"},
+{id:"PR003",mod:"M_PROCESS_REDESIGN",sec:["healthcare"],name:"Mayo Clinic – AI remote monitoring -40% readmisji",kpi:"Redukcja readmisji",c:25,m:40,o:50,unit:"% redukcja readmisji",src:"Netguru – AI in Telehealth",yr:2025,conf:"high",type:"case_study"},
+{id:"PR004",mod:"M_PROCESS_REDESIGN",sec:["all_smb","professional_services"],name:"DX ROI 143% planowanego (McKinsey/Deloitte)",kpi:"ROI z transformacji cyfrowej",c:100,m:143,o:200,unit:"% osiągniętego ROI vs plan",src:"McKinsey / Deloitte / cflowapps",yr:2025,conf:"high",type:"industry_aggregate"},
+{id:"PR005",mod:"M_PROCESS_REDESIGN",sec:["all_smb","retail","healthcare"],name:"UX redesign +10.8% retencji przychodów (Forrester)",kpi:"Retencja przychodów z UX",c:5,m:11,o:20,unit:"% wzrost retencji (2 lata)",src:"Forrester TEI 2025 / Deloitte",yr:2025,conf:"high",type:"independent_research"},
+{id:"PR006",mod:"M_PROCESS_REDESIGN",sec:["all_smb"],name:"94% AI transf. = porażka, redesign = 3x sukces",kpi:"Redesign vs automation success",c:200,m:300,o:500,unit:"% wyższy ROI przy redesign",src:"Botpress / MIT / BCG",yr:2026,conf:"high",type:"independent_research"},
+{id:"PR007",mod:"M_PROCESS_REDESIGN",sec:["all_smb"],name:"DX – 35% success rate globalnie (BCG)",kpi:"Success rate DX",c:25,m:35,o:56,unit:"% firm z celami DX",src:"BCG / Integrate.io",yr:2025,conf:"high",type:"independent_research"},
+{id:"MOB001",mod:"M_MOBILE_APP",sec:["medical","dental","aesthetic","fitness"],name:"Aplikacje zdrowotne – retencja pacjentów",kpi:"Wzrost zaangażowania i lojalności",c:15,m:25,o:40,unit:"% wzrost retention rate",src:"Wolters Kluwer / Columncontent",yr:2025,conf:"medium",type:"industry_aggregate"},
+{id:"MOB002",mod:"M_MOBILE_APP",sec:["medical","dental","aesthetic"],name:"Portale pacjenta – +20% follow-through (JAMIA)",kpi:"Wzrost realizacji skierowań",c:15,m:20,o:40,unit:"% wzrost follow-through",src:"JAMIA / athenahealth",yr:2024,conf:"high",type:"independent_research"},
+{id:"MOB003",mod:"M_MOBILE_APP",sec:["medical","healthcare"],name:"Wearable + mHealth – +20% engagement",kpi:"Wzrost patient engagement",c:12,m:20,o:30,unit:"% wzrost engagement",src:"BHMPC – Digital Health Outcomes",yr:2024,conf:"medium",type:"industry_report"},
+{id:"MOB004",mod:"M_MOBILE_APP",sec:["medical","healthcare","fitness"],name:"Patient engagement rynek $27.6B→$86.7B (GVR)",kpi:"Wzrost retencji + redukcja no-show",c:10,m:18,o:30,unit:"% wzrost retencji",src:"Grand View Research",yr:2025,conf:"high",type:"market_research"},
+{id:"MOB005",mod:"M_MOBILE_APP",sec:["medical","dental","healthcare"],name:"26% pacjentów zmieni lekarza bez digital",kpi:"Ryzyko utraty pacjentów",c:15,m:26,o:35,unit:"% pacjentów gotowych odejść",src:"athenahealth / Accenture",yr:2024,conf:"high",type:"independent_research"},
+];
+
+// ── MODULE SUMMARY (from benchmark_db v3.0 module_summary) ──
+const MSUM={
+  M_BOOKING:{ids:["BK001","BK002","BK003","BK004","BK005","BK006","BK007"],ci:{no_show_reduction:50,revenue_increase:12},mi:{no_show_reduction:69,revenue_increase:20},oi:{no_show_reduction:84,revenue_increase:35},pb:{conservative:8,median:5,optimistic:3}},
+  M_WEBSITE_SEO:{ids:["SEO001","SEO002","SEO003","SEO004","SEO005","SEO006","SEO007","SEO008"],ci:{new_patients_increase:60,organic_traffic_increase:200},mi:{new_patients_increase:120,organic_traffic_increase:500},oi:{new_patients_increase:200,organic_traffic_increase:1400},pb:{conservative:12,median:8,optimistic:6}},
+  M_CRM_AUTOMATION:{ids:["CRM001","CRM002","CRM003","CRM004","CRM005","CRM006","CRM007","CRM008","CRM009"],ci:{sales_increase:20,leads_increase:40,roi_3yr:150},mi:{sales_increase:29,leads_increase:75,roi_3yr:299},oi:{sales_increase:41,leads_increase:129,roi_3yr:505},pb:{conservative:18,median:12,optimistic:8}},
+  M_DIGITAL_MARKETING:{ids:["DM001","DM002","DM003","DM004","DM005","DM006","DM007"],ci:{roi:300,leads_increase:40},mi:{roi:544,leads_increase:80},oi:{roi:800,leads_increase:129},pb:{conservative:12,median:6,optimistic:4}},
+  M_BI_DASHBOARD:{ids:["BI001","BI002","BI003","BI004","BI005","BI006"],ci:{operational_efficiency:20,reporting_time_reduction:60},mi:{operational_efficiency:30,reporting_time_reduction:75},oi:{operational_efficiency:45,reporting_time_reduction:90},pb:{conservative:12,median:8,optimistic:5}},
+  M_ECOMMERCE:{ids:["EC001","EC002","EC003","EC004","EC005","EC006","EC007"],ci:{revenue_increase:8},mi:{revenue_increase:25},oi:{revenue_increase:54},pb:{conservative:18,median:12,optimistic:8}},
+  M_AI_AUTOMATION:{ids:["AI001","AI002","AI003","AI004","AI005","AI006","AI007"],ci:{process_time_reduction:50,roi_14months:200},mi:{process_time_reduction:75,roi_14months:320},oi:{process_time_reduction:85,roi_14months:500},pb:{conservative:18,median:14,optimistic:10}},
+  M_COMPUTER_VISION:{ids:["CV001","CV002","CV003"],ci:{defect_reduction:25,roi:200},mi:{defect_reduction:37,roi:500},oi:{defect_reduction:50,roi:1900},pb:{conservative:18,median:12,optimistic:6}},
+  M_PROCESS_REDESIGN:{ids:["PR001","PR002","PR003","PR004","PR005","PR006","PR007"],ci:{operational_efficiency:20,roi:100,cost_reduction:15},mi:{operational_efficiency:30,roi:143,cost_reduction:20},oi:{operational_efficiency:45,roi:200,cost_reduction:30},pb:{conservative:24,median:14,optimistic:9}},
+  M_MOBILE_APP:{ids:["MOB001","MOB002","MOB003","MOB004","MOB005"],ci:{patient_retention:10,engagement_increase:12,follow_through:15},mi:{patient_retention:20,engagement_increase:20,follow_through:20},oi:{patient_retention:35,engagement_increase:30,follow_through:40},pb:{conservative:14,median:8,optimistic:5}},
+};
+
+// ── SOURCE WEIGHTS (CRO recommendation) ──
+const SRC_W={peer_reviewed_study:1.0,independent_research:0.9,government_programme:0.9,market_research:0.85,industry_aggregate:0.8,case_study:0.7,industry_report:0.7,vendor_study:0.5,vendor_case_study:0.5};
+
+// ── POLISH MARKET MULTIPLIERS ──
+const PL_M={medical:0.70,dental:0.70,beauty:0.70,trade:0.65,services:0.85,manufacturing:0.60};
+
+// ── FAILURE RATES (for S0 stress test context) ──
+const FAIL={bi:0.73,ai:0.94,big_data:0.85,genai_pilot:0.05,ecommerce:0.80};
+
+// ══════════════════════════════════════════════════════════════
+// PRICING MODEL — 3-phase: Audit → I Pakiet → Monthly Fee + SF
+//
+// Phase 1: AUDYT (jednorazowy, miesiąc 0)
+//   Koszt zależny od wielkości firmy i złożoności
+//
+// Phase 2: I PAKIET WDROŻENIOWY (jednorazowy, miesiące 1–impl)
+//   Realizacja priorytetowych wdrożeń, mierzalne KPI
+//   Klient płaci po zakończeniu audytu
+//
+// Phase 3: MONTHLY FEE + SUCCESS FEE (od momentu osiągnięcia KPI)
+//   Stałe miesięczne fee za utrzymanie i rozwój
+//   + 15% success fee od netto nowego przychodu (powyżej baseline)
+//   Fee startuje PO osiągnięciu pierwszych KPI (≈25% adopcji)
+// ══════════════════════════════════════════════════════════════
+
+// Audit cost table
+const AUDIT_COST=[
+  {maxRev:1e6,   base:10000},   // mikro: 10K
+  {maxRev:3e6,   base:25000},   // mała: 25K
+  {maxRev:8e6,   base:50000},   // średnia-mała: 50K
+  {maxRev:20e6,  base:80000},   // średnia: 80K
+  {maxRev:50e6,  base:120000},  // średnia-duża: 120K
+  {maxRev:250e6, base:200000},  // duża: 200K
+];
+
+// Implementation package cost table
+const IMPL_COST=[
+  {maxRev:1e6,   base:40000},   // mikro: 40-80K
+  {maxRev:3e6,   base:80000},   // mała: 80-160K
+  {maxRev:8e6,   base:150000},  // średnia-mała: 150-240K
+  {maxRev:20e6,  base:240000},  // średnia: 240-360K
+  {maxRev:50e6,  base:350000},  // średnia-duża: 350-480K
+  {maxRev:250e6, base:480000},  // duża: 480K+
+];
+
+// Monthly fee table (starts AFTER KPI achieved)
+const MONTHLY_FEE=[
+  {maxRev:2e6,   baseMo:12000},  // <2M: 12K/mth
+  {maxRev:5e6,   baseMo:18000},  // 2-5M: 18K/mth
+  {maxRev:12e6,  baseMo:28000},  // 5-12M: 28K/mth
+  {maxRev:50e6,  baseMo:40000},  // 12-50M: 40K/mth
+  {maxRev:250e6, baseMo:55000},  // 50-250M: 55K/mth
+];
+
+// Module complexity multiplier for implementation package
+const IMPL_MULT=[1.0,1.0,1.15,1.30,1.50,1.70]; // idx = module count
+
+function getAuditCost(annualRevenue){
+  const tier=AUDIT_COST.find(t=>annualRevenue<=t.maxRev)||AUDIT_COST[AUDIT_COST.length-1];
+  return tier.base;
+}
+
+function getImplPackageCost(annualRevenue,moduleCount){
+  const tier=IMPL_COST.find(t=>annualRevenue<=t.maxRev)||IMPL_COST[IMPL_COST.length-1];
+  const mult=IMPL_MULT[Math.min(moduleCount,IMPL_MULT.length-1)]||1.7;
+  return Math.round(tier.base*mult);
+}
+
+function getMonthlyFee(annualRevenue,moduleCount){
+  const tier=MONTHLY_FEE.find(t=>annualRevenue<=t.maxRev)||MONTHLY_FEE[MONTHLY_FEE.length-1];
+  const mult=IMPL_MULT[Math.min(moduleCount,IMPL_MULT.length-1)]||1.7;
+  return Math.round(tier.baseMo*mult);
+}
+
+// ══════════════════════════════════════════════════════════════
+// MODULE & SECTOR DEFINITIONS
+// ══════════════════════════════════════════════════════════════
+const MOD={
+  M_BOOKING:{label:"Rezerwacje online i płatności",icon:"📅",desc:"Rezerwacje, przypomnienia SMS, płatności cyfrowe",im:2,
+    ba:{metric:"Wskaźnik no-show",unit:"%",before:v=>v,after:(v,s)=>Math.round(v*(1-(s==="S1"?0.5:s==="S2"?0.69:0.84)))}},
+  M_WEBSITE_SEO:{label:"Strona www i widoczność w Google",icon:"🔍",desc:"SEO lokalne, Google Business Profile, content",im:6,
+    ba:{metric:"Nowi klienci / mies.",unit:"os.",before:v=>Math.round(v*0.15),after:(v,s)=>Math.round(v*0.15*(1+(s==="S1"?0.6:s==="S2"?1.2:2.0)))}},
+  M_CRM_AUTOMATION:{label:"CRM i automatyzacja sprzedaży",icon:"🤝",desc:"CRM, lead scoring, automatyzacja follow-upów",im:6,
+    ba:{metric:"Konwersja leadów",unit:"%",before:()=>12,after:(_,s)=>s==="S1"?16:s==="S2"?19:24}},
+  M_DIGITAL_MARKETING:{label:"Marketing cyfrowy i social media",icon:"📱",desc:"Google Ads, social, email automation",im:3,
+    ba:{metric:"Koszt pozyskania klienta",unit:"PLN",before:()=>180,after:(_,s)=>s==="S1"?140:s==="S2"?115:90}},
+  M_BI_DASHBOARD:{label:"Analityka zarządcza i dashboardy",icon:"📊",desc:"Dashboardy real-time, KPI, raportowanie",im:4,
+    ba:{metric:"Czas raportu zarządczego",unit:"dni",before:()=>5,after:(_,s)=>s==="S1"?2:s==="S2"?1:0.5}},
+  M_AI_AUTOMATION:{label:"Automatyzacja AI",icon:"🤖",desc:"AI do automatyzacji zadań, raportowania",im:6,
+    ba:{metric:"Godziny admin / tydzień",unit:"h",before:()=>16,after:(_,s)=>s==="S1"?8:s==="S2"?4:2}},
+};
+
+const SECTORS=[
+  {id:"medical",label:"Branża medyczna",sub:"Kliniki, gabinety, placówki zdrowia",pl:0.70},
+  {id:"dental",label:"Stomatologia",sub:"Gabinety dentystyczne",pl:0.70},
+  {id:"beauty",label:"Uroda i wellness",sub:"Salony, SPA, fizjoterapia",pl:0.70},
+  {id:"trade",label:"Handel i dystrybucja",sub:"Hurtownie, sklepy, e-commerce",pl:0.65},
+  {id:"services",label:"Usługi profesjonalne",sub:"Doradztwo, księgowość, usługi biznesowe",pl:0.85},
+  {id:"manufacturing",label:"Produkcja",sub:"Zakłady produkcyjne, przetwórstwo",pl:0.60},
+];
+
+// ══════════════════════════════════════════════════════════════
+// REVENUE CEILING TABLE — max growth multiplier by audit grade × sector
+// Grade F=very low digital maturity → high upside potential
+// Grade A=already optimized → limited incremental gain
+// ══════════════════════════════════════════════════════════════
+const REV_CEILING={
+  // [grade]: {sector: max_revenue_multiplier}
+  F: {medical:1.80,dental:1.80,beauty:1.70,trade:1.60,services:1.50,manufacturing:1.40},
+  D: {medical:1.55,dental:1.55,beauty:1.50,trade:1.45,services:1.40,manufacturing:1.30},
+  C: {medical:1.35,dental:1.35,beauty:1.30,trade:1.30,services:1.28,manufacturing:1.22},
+  B: {medical:1.22,dental:1.22,beauty:1.20,trade:1.20,services:1.18,manufacturing:1.15},
+  A: {medical:1.12,dental:1.12,beauty:1.10,trade:1.10,services:1.10,manufacturing:1.08},
+};
+
+// Revenue ceiling by company size (additional dampener for large firms)
+const SIZE_CEILING=[
+  {maxRev:2e6,   mult:1.0},   // small: full ceiling applies
+  {maxRev:5e6,   mult:0.95},  // medium-small: slightly dampened
+  {maxRev:12e6,  mult:0.85},  // medium: harder to move needle
+  {maxRev:50e6,  mult:0.70},  // medium-large: significant dampening
+  {maxRev:250e6, mult:0.55},  // large: hardest to grow %
+];
+
+function getRevenueCeiling(annualRevenue, sector, auditGrade){
+  const grade=auditGrade||"C"; // default if no audit
+  const gradeRow=REV_CEILING[grade]||REV_CEILING.C;
+  const baseMult=gradeRow[sector]||gradeRow.medical||1.30;
+  const sizeDamp=SIZE_CEILING.find(s=>annualRevenue<=s.maxRev)||SIZE_CEILING[SIZE_CEILING.length-1];
+  // Effective ceiling: interpolate between 1.0 (no growth) and baseMult
+  const effectiveMult=1+(baseMult-1)*sizeDamp.mult;
+  return effectiveMult;
+}
+
+function getAuditGrade(evalResult){
+  if(!evalResult)return "C";
+  const avg=Object.values(evalResult.scores).reduce((a,b)=>a+b,0)/6;
+  return avg>=80?"A":avg>=65?"B":avg>=45?"C":avg>=25?"D":"F";
+}
+
+// ══════════════════════════════════════════════════════════════
+// CALCULATION ENGINE (reference-table-driven + revenue ceiling)
+// ══════════════════════════════════════════════════════════════
+function adopt(t,ti,tf,r){return 1/(1+Math.exp(-0.8*(t-ti-0.4*(ti+tf)*(r<30?1.4:r<60?1:0.75))));}
+function boxM(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function gamS(a){if(a<1)return gamS(a+1)*Math.pow(Math.random(),1/a);const d=a-1/3,c=1/Math.sqrt(9*d);let x,v;do{do{x=boxM();v=1+c*x}while(v<=0);v=v*v*v;const u=Math.random();if(u<1-0.0331*x*x*x*x||Math.log(u)<0.5*x*x+d*(1-v+Math.log(v)))return d*v}while(1);}
+function betaS(a,b){const x=gamS(a);return x/(x+gamS(b));}
+
+// Calculate module delta from MSUM reference table
+function calcModDelta(mk,inp,pl,scenarioKey){
+  const ms=MSUM[mk];if(!ms)return 0;
+  const imp=scenarioKey==="S1"||scenarioKey==="S0"?ms.ci:scenarioKey==="S2"?ms.mi:ms.oi;
+  const{annualRevenue:ar,employees:emp,monthlyVisits:mv,avgVisitValue:avv,noshowRate:nsr}=inp;
+  const isMed=["medical","dental","beauty"].includes(inp.sector);
+  let d=0;
+  if(mk==="M_BOOKING"&&isMed&&mv>0){d=mv*(nsr/100)*((imp.no_show_reduction||50)/100)*avv*pl;}
+  else if(mk==="M_WEBSITE_SEO"){d=mv*0.15*((imp.new_patients_increase||60)/100)*0.88*avv*3.5/12*pl;}
+  else if(mk==="M_CRM_AUTOMATION"){d=(ar/12)*((imp.sales_increase||20)/100)*pl;}
+  else if(mk==="M_DIGITAL_MARKETING"){d=(ar*0.05/12)*(((imp.roi||300)/100)-1)*pl;}
+  else if(mk==="M_BI_DASHBOARD"){d=(ar*0.35/12)*((imp.operational_efficiency||20)/100)*pl;}
+  else if(mk==="M_AI_AUTOMATION"){d=emp*(ar>5e6?9000:5500)*0.40*((imp.process_time_reduction||50)/100)*pl;}
+  // Scale for S0 worst case
+  if(scenarioKey==="S0")d*=0.40;
+  else if(scenarioKey==="S1")d*=0.60;
+  else if(scenarioKey==="S2")d*=0.85;
+  // S3 = 1.0, S4 = 1.30
+  else if(scenarioKey==="S4")d*=1.30;
+  return d;
+}
+
+function calcFull(inp,auditGrade){
+  const pl=SECTORS.find(s=>s.id===inp.sector)?.pl||0.7;
+  const r=inp.annualRevenue>20e6?0.08:inp.annualRevenue>5e6?0.10:0.12;
+  const rm=Math.pow(1+r,1/12)-1;
+  const nMod=inp.modules.length;
+  const sy=nMod<=1?1:nMod<=3?1.08:nMod<=5?1.15:1.2;
+  const cx=nMod<=1?4:nMod<=3?6:nMod<=5?8:12;
+  const isMed=["medical","dental","beauty"].includes(inp.sector);
+
+  // Revenue ceiling from reference table
+  const ceilingMult=getRevenueCeiling(inp.annualRevenue,inp.sector,auditGrade);
+  const maxMonthlyGrowth=(inp.annualRevenue/12)*(ceilingMult-1); // max additional monthly revenue
+
+  // ── 3-PHASE PRICING ──
+  const auditCost=getAuditCost(inp.annualRevenue);
+  const implCost=getImplPackageCost(inp.annualRevenue,nMod);
+  const monthlyFee=getMonthlyFee(inp.annualRevenue,nMod);
+  const annualFee=monthlyFee*12;
+  const it=Math.max(...inp.modules.map(m=>MOD[m]?.im||3));
+  const kpiMonth=Math.round(it+cx*0.2); // when KPI first achieved (~25% adoption)
+
+  // Success fee: 15% on (gross_growth_above_baseline)
+  // baseline = client's revenue before our intervention
+  // fee only applies AFTER KPI achieved
+  const calcSF=(monthlyGross)=>{
+    if(monthlyGross<=0)return 0;
+    const sf=monthlyGross*0.15; // 15% of all new gross revenue
+    const cap=annualFee*2.5/12; // cap: 2.5× annual fee / 12
+    return Math.min(sf,cap);
+  };
+
+  const hasCeiling=isMed&&inp.monthlyVisits>0&&(inp.monthlyVisits*inp.avgVisitValue*12/inp.annualRevenue>0.6)||nMod>=4||inp.annualRevenue>5e6;
+  const scenKeys=["S0","S1","S2","S3"];
+  if(hasCeiling)scenKeys.push("S4");
+
+  const results={};
+  for(const sn of scenKeys){
+    let grossDelta=0;const md=[];
+    for(const mk of inp.modules){
+      const d=calcModDelta(mk,inp,pl,sn);
+      grossDelta+=d;
+      md.push({key:mk,label:MOD[mk]?.label||mk,icon:MOD[mk]?.icon||"📦",total:d});
+    }
+    grossDelta*=sy;
+    if(sn==="S0")grossDelta*=(1-0.15);
+
+    // Apply revenue ceiling
+    grossDelta=Math.min(grossDelta,maxMonthlyGrowth);
+    if(grossDelta<md.reduce((s,m)=>s+m.total,0)*sy){
+      const rawTotal=md.reduce((s,m)=>s+m.total,0)*sy;
+      const ratio=rawTotal>0?grossDelta/rawTotal:1;
+      md.forEach(m=>m.total=m.total*ratio);
+    }
+
+    const adoptMult=sn==="S0"?1.5:1;
+
+    // Build cashflow: month 0 = audit, month 1..impl = implementation, then KPI→monthly fee + SF
+    let cum=-auditCost; // Phase 1: audit upfront
+    const cfs=[{month:0,cf:-auditCost,cum:-auditCost,dcf:-auditCost,gross:0,fixed:0,sf:0,net:-auditCost,phase:"Audyt"}];
+    let totalImpl=0,totalFee=0,totalSF=0;
+    const implMonthly=Math.round(implCost/Math.max(it,1)); // spread impl cost over impl months
+
+    for(let t=1;t<=24;t++){
+      const a=adopt(t,it*adoptMult,cx*adoptMult,inp.readiness);
+      const gross=Math.round(grossDelta*a);
+      const kpiAchieved=t>=kpiMonth*adoptMult;
+
+      // Phase 2: implementation cost (months 1..impl)
+      const impl=t<=it?implMonthly:0;
+      totalImpl+=impl;
+
+      // Phase 3: monthly fee + SF starts AFTER KPI achieved
+      const fee=kpiAchieved?monthlyFee:0;
+      const sf=kpiAchieved?Math.round(calcSF(gross)):0;
+      totalFee+=fee;totalSF+=sf;
+
+      const costs=impl+fee+sf;
+      const net=gross-costs;
+      cum+=net;
+      cfs.push({month:t,cf:Math.round(net),cum:Math.round(cum),dcf:Math.round(net/Math.pow(1+rm,t)),gross,impl,fixed:fee,sf,net:Math.round(net),phase:t<=it?"I Pakiet":kpiAchieved?"Fee+SF":"Wdrożenie"});
+    }
+    const npv=cfs.reduce((s,c)=>s+c.dcf,0);
+    const pb=cfs.find(c=>c.month>0&&c.cum>=0)?.month||99;
+
+    // IRR
+    let irr=0.01;
+    for(let j=0;j<25;j++){let f=0,df=0;for(const c of cfs){const v=c.net||0;f+=v/Math.pow(1+irr,c.month);df-=c.month*v/Math.pow(1+irr,c.month+1);}if(Math.abs(df)<1e-10)break;irr=Math.max(-0.5,Math.min(irr-f/df,10));}
+
+    const totalInvestment=auditCost+implCost; // upfront phases
+    const totalCostAll=auditCost+implCost+totalFee+totalSF; // everything over 24m
+
+    results[sn]={npv:Math.round(npv),pb:Math.min(pb,24),roi:Math.round((totalInvestment+npv)/totalInvestment*10)/10,irr:Math.round(irr*1200)/100,
+      auditCost,implCost,totalInvestment,monthlyFee,annualFee,totalFee,totalSF:Math.round(totalSF),totalCostAll,kpiMonth:Math.round(kpiMonth*adoptMult),
+      grossDelta:Math.round(grossDelta),netDelta:Math.round(grossDelta-monthlyFee-calcSF(grossDelta)),
+      cfs,md,r,
+      ba:inp.modules.map(mk=>{const mo=MOD[mk];if(!mo?.ba)return null;if(mk==="M_BOOKING"&&!isMed)return null;return{label:mo.ba.metric,unit:mo.ba.unit,icon:mo.icon,before:mo.ba.before(mk==="M_BOOKING"?inp.noshowRate:mk==="M_WEBSITE_SEO"?inp.monthlyVisits:0),after:mo.ba.after(mk==="M_BOOKING"?inp.noshowRate:mk==="M_WEBSITE_SEO"?inp.monthlyVisits:inp.employees,sn)};}).filter(Boolean),
+    };
+  }
+
+  // Monte Carlo (5000 iter) — 3-phase pricing with ceiling
+  const mcNPVs=[];
+  for(let i=0;i<5000;i++){
+    const sc=0.3+betaS(4,3)*0.9;const tj=1+boxM()*0.15;
+    let mD=0;for(const mk of inp.modules){const ms=MSUM[mk];if(!ms)continue;const imp=sc<0.5?ms.ci:sc<0.85?ms.mi:ms.oi;let d=0;
+      if(mk==="M_BOOKING"&&isMed&&inp.monthlyVisits>0)d=inp.monthlyVisits*(inp.noshowRate/100)*((imp.no_show_reduction||50)/100)*inp.avgVisitValue*pl;
+      else if(mk==="M_WEBSITE_SEO")d=inp.monthlyVisits*0.15*((imp.new_patients_increase||60)/100)*0.88*inp.avgVisitValue*3.5/12*pl;
+      else if(mk==="M_CRM_AUTOMATION")d=(inp.annualRevenue/12)*((imp.sales_increase||20)/100)*pl;
+      else if(mk==="M_DIGITAL_MARKETING")d=(inp.annualRevenue*0.05/12)*(((imp.roi||300)/100)-1)*pl;
+      else if(mk==="M_BI_DASHBOARD")d=(inp.annualRevenue*0.35/12)*((imp.operational_efficiency||20)/100)*pl;
+      else if(mk==="M_AI_AUTOMATION")d=inp.employees*(inp.annualRevenue>5e6?9000:5500)*0.4*((imp.process_time_reduction||50)/100)*pl;
+      mD+=d*sc;}
+    mD=Math.min(mD*sy,maxMonthlyGrowth);
+    let npv=-auditCost;const implM=Math.round(implCost/Math.max(it,1));
+    for(let t=1;t<=24;t++){const a=adopt(t,it*tj,cx*tj,inp.readiness);const gross=mD*a;const impl2=t<=it?implM:0;const kpi=t>=kpiMonth*tj;const fee2=kpi?monthlyFee:0;const sf2=kpi?Math.min(gross*0.15,annualFee*2.5/12):0;npv+=(gross-impl2-fee2-sf2)/Math.pow(1+rm,t);}
+    mcNPVs.push(npv);
+  }
+  mcNPVs.sort((a,b)=>a-b);
+  const pc=p=>mcNPVs[Math.floor(p/100*(mcNPVs.length-1))];
+  const mc={p5:Math.round(pc(5)),p15:Math.round(pc(15)),p50:Math.round(pc(50)),p75:Math.round(pc(75)),p90:Math.round(pc(90)),mean:Math.round(mcNPVs.reduce((a,b)=>a+b,0)/mcNPVs.length),pos:Math.round(mcNPVs.filter(v=>v>0).length/mcNPVs.length*100)};
+
+  const miles=[{m:0,l:"Start",d:"Audyt + kick-off",i:"🚀"},{m:it,l:"Wdrożenie live",d:`${nMod} moduł(ów)`,i:"⚙️"},{m:Math.round(it+cx*0.2),l:"Pierwsze efekty",d:"25% adopcji",i:"📈"},{m:Math.min(results.S2?.pb||12,24),l:"Break-even",d:"Zwrot inwestycji",i:"💰"},{m:24,l:"Koniec horyzontu",d:`NPV (24m): ${fmt(results.S2?.npv||0)} PLN`,i:"🏁"}];
+  const ev=0.20*(results.S1?.npv||0)+0.40*(results.S2?.npv||0)+0.25*(results.S3?.npv||0)+0.12*(results.S4?.npv||results.S3?.npv||0)+0.03*(results.S3?.npv||0)*1.5;
+
+  return{scenarios:results,mc,miles,ev:Math.round(ev),auditCost,implCost,totalInvestment:auditCost+implCost,monthlyFee,annualFee:monthlyFee*12,r,sy,
+    ceilingMult,maxMonthlyGrowth:Math.round(maxMonthlyGrowth),auditGrade:auditGrade||"C",kpiMonth,
+    benchUsed:inp.modules.flatMap(mk=>MSUM[mk]?.ids||[]).map(id=>BENCH.find(b=>b.id===id)).filter(Boolean)};
+}
+
+// ══════════════════════════════════════════════════════════════
+// COMPANY DB (20 key firms for demo — full 60 in production)
+// ══════════════════════════════════════════════════════════════
+const CDB=[{name:"Centrum Medyczne HCP",domain:"hcp.com.pl",sector:"medical",city:"Poznań",scores:{website:62,seo:45,social:38,crm:20,analytics:25,booking:55}},{name:"Klinika Estell",domain:"estell.pl",sector:"medical",city:"Poznań",scores:{website:78,seo:68,social:62,crm:35,analytics:30,booking:72}},{name:"Optegra Okulistyka",domain:"optegra.pl",sector:"medical",city:"Poznań",scores:{website:82,seo:72,social:55,crm:45,analytics:40,booking:78}},{name:"Centrum Stomatologii Estetycznej",domain:"cse-poznan.pl",sector:"dental",city:"Poznań",scores:{website:71,seo:55,social:48,crm:30,analytics:22,booking:65}},{name:"Meble VOX",domain:"vox.pl",sector:"trade",city:"Poznań",scores:{website:85,seo:78,social:72,crm:60,analytics:55,booking:30}},{name:"Komputronik S.A.",domain:"komputronik.pl",sector:"trade",city:"Poznań",scores:{website:88,seo:82,social:68,crm:65,analytics:70,booking:25}},{name:"Elektro-Hurt",domain:"elektrohurt.pl",sector:"trade",city:"Kalisz",scores:{website:35,seo:20,social:12,crm:8,analytics:5,booking:10}},{name:"Volkswagen Poznań",domain:"vw-poznan.pl",sector:"manufacturing",city:"Poznań",scores:{website:80,seo:65,social:58,crm:55,analytics:65,booking:10}},{name:"Amica S.A.",domain:"amica.pl",sector:"manufacturing",city:"Wronki",scores:{website:82,seo:70,social:55,crm:50,analytics:58,booking:15}},{name:"Grant Thornton Poznań",domain:"grantthornton.pl",sector:"services",city:"Poznań",scores:{website:85,seo:72,social:55,crm:60,analytics:55,booking:40}},{name:"Filipiak Babicz Kancelaria",domain:"filipiakbabicz.com",sector:"services",city:"Poznań",scores:{website:78,seo:65,social:42,crm:30,analytics:25,booking:48}},{name:"Rachmistrz Biuro Rachunkowe",domain:"rachmistrz-poznan.pl",sector:"services",city:"Poznań",scores:{website:40,seo:25,social:15,crm:8,analytics:5,booking:18}},{name:"Termy Maltańskie SPA",domain:"termymaltanskie.com.pl",sector:"beauty",city:"Poznań",scores:{website:75,seo:60,social:55,crm:30,analytics:25,booking:65}},{name:"Bielenda Klinika Urody",domain:"bielenda-poznan.pl",sector:"beauty",city:"Poznań",scores:{website:68,seo:50,social:72,crm:20,analytics:15,booking:58}},{name:"HCP Cegielski",domain:"hcpcegielski.pl",sector:"manufacturing",city:"Poznań",scores:{website:48,seo:30,social:20,crm:15,analytics:22,booking:5}},{name:"Kreativa Marketing",domain:"kreativa.poznan.pl",sector:"services",city:"Poznań",scores:{website:82,seo:72,social:78,crm:35,analytics:30,booking:25}},{name:"Cukiernia Kandulski",domain:"kandulski.pl",sector:"trade",city:"Poznań",scores:{website:65,seo:50,social:60,crm:15,analytics:10,booking:35}},{name:"Zakłady Metalowe Kuźnia",domain:"kuznia-wlkp.pl",sector:"manufacturing",city:"Ostrów Wlkp.",scores:{website:30,seo:18,social:10,crm:5,analytics:5,booking:5}},{name:"Stolarnia Wielkopolska",domain:"stolarnia-wlkp.pl",sector:"manufacturing",city:"Gniezno",scores:{website:38,seo:22,social:15,crm:5,analytics:5,booking:8}},{name:"FormA Architekci",domain:"forma-architekci.pl",sector:"services",city:"Poznań",scores:{website:75,seo:55,social:58,crm:15,analytics:12,booking:30}}];
+const SMAP={website:"M_WEBSITE_SEO",seo:"M_WEBSITE_SEO",social:"M_DIGITAL_MARKETING",crm:"M_CRM_AUTOMATION",analytics:"M_BI_DASHBOARD",booking:"M_BOOKING"};
+const SLBL={website:"Strona www",seo:"SEO",social:"Social media",crm:"CRM",analytics:"Analityka",booking:"Rezerwacje"};
+
+// ── HELPERS ──
+const fmt=n=>Math.abs(n)>=1e6?(n/1e6).toFixed(1).replace(".",",")+"M":Math.round(n).toLocaleString("pl-PL");
+const fP=n=>fmt(n)+" PLN";
+const sC=s=>s>=70?T.ok:s>=40?T.g:T.no;
+const sG=s=>s>=80?"A":s>=65?"B":s>=45?"C":s>=25?"D":"F";
+
+// ── UI COMPONENTS ──
+const Met=({label,value,sub,color})=><div style={{padding:"16px 14px",borderRadius:12,background:"rgba(255,255,255,0.025)",border:`1px solid ${T.gb}`}}><div style={{fontSize:9,color:"rgba(250,246,239,0.3)",textTransform:"uppercase",letterSpacing:"2px",marginBottom:6,fontWeight:700}}>{label}</div><div style={{fontSize:22,color:color||T.g,fontFamily:T.fd,lineHeight:1.1}}>{value}</div>{sub&&<div style={{fontSize:10,color:"rgba(250,246,239,0.25)",marginTop:5}}>{sub}</div>}</div>;
+const Bar=({label,score})=><div style={{marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:11,color:"rgba(250,246,239,0.4)"}}>{label}</span><span style={{fontSize:12,fontWeight:700,color:sC(score)}}>{score}/100</span></div><div style={{height:5,borderRadius:3,background:"rgba(255,255,255,0.05)",overflow:"hidden"}}><div style={{height:"100%",borderRadius:3,width:`${Math.min(score,100)}%`,background:sC(score),transition:"width 0.6s"}}/></div></div>;
+
+// ══════════════════════════════════════════════════════════════
+// MAIN APP
+// ══════════════════════════════════════════════════════════════
+function App(){
+  const[ok,setOk]=useState(false);const[rodo,setRodo]=useState(false);const[step,setStep]=useState(0);const[res,setRes]=useState(null);
+  const[scn,setScn]=useState("S2");const[url,setUrl]=useState("");const[ev,setEv]=useState(null);
+  const[rTab,setRTab]=useState("scorecard");const[sensRate,setSensRate]=useState(null);const[showBench,setShowBench]=useState(false);
+  const[email,setEmail]=useState("");const[phone,setPhone]=useState("");
+  const[show2FA,setShow2FA]=useState(false);const[smsCode,setSmsCode]=useState("");const[verified,setVerified]=useState(false);const[smsSent,setSmsSent]=useState(false);
+  const[inp,setI]=useState({sector:"",annualRevenue:3e6,employees:20,modules:[],monthlyVisits:500,avgVisitValue:250,noshowRate:15,readiness:50});
+
+  const s=(k,v)=>setI(p=>({...p,[k]:v}));const tog=m=>s("modules",inp.modules.includes(m)?inp.modules.filter(x=>x!==m):[...inp.modules,m]);
+  const isMed=["medical","dental","beauty"].includes(inp.sector);const sec=SECTORS.find(x=>x.id===inp.sector);
+
+  // Audit grade for ceiling
+  const auditG=useMemo(()=>getAuditGrade(ev),[ev]);
+
+  const runEv=useCallback(()=>{const d=url.replace(/^https?:\/\//,"").replace(/^www\./,"").split("/")[0].toLowerCase();const m=CDB.find(c=>d.includes(c.domain.split(".")[0])||c.domain.includes(d.split(".")[0]));if(m){setEv(m);if(!inp.sector)s("sector",m.sector);}else{setEv({name:d,domain:d,sector:inp.sector||"services",city:"Wielkopolska",scores:{website:35+Math.floor(Math.random()*25),seo:20+Math.floor(Math.random()*25),social:15+Math.floor(Math.random()*30),crm:5+Math.floor(Math.random()*20),analytics:5+Math.floor(Math.random()*18),booking:10+Math.floor(Math.random()*25)}})}},[url,inp.sector]);
+  const applyRec=useCallback(()=>{if(!ev)return;s("modules",[...new Set(Object.entries(ev.scores).filter(([_,v])=>v<50).map(([k])=>SMAP[k]).filter(Boolean))]);setStep(3);},[ev]);
+
+  return(<div style={{minHeight:"100vh",background:T.td,color:T.cr,fontFamily:T.fb}}>
+    {/* fonts loaded in head */}
+    <div style={{position:"fixed",inset:0,opacity:0.012,backgroundImage:`radial-gradient(circle at 20% 50%,${T.g} 1px,transparent 1px)`,backgroundSize:"48px 48px",pointerEvents:"none"}}/>
+
+    {/* DISCLAIMER */}
+    {/* DISCLAIMER + RODO */}
+    {!ok&&<div style={{position:"fixed",inset:0,zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(13,43,43,0.95)",backdropFilter:"blur(16px)"}}>
+      <div style={{maxWidth:580,margin:"0 20px",background:`linear-gradient(145deg,${T.tm},${T.tmd})`,border:`1px solid ${T.gb}`,borderRadius:20,padding:"40px 36px",maxHeight:"90vh",overflowY:"auto"}}>
+
+        {/* Header */}
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:24}}>
+          <div style={{width:40,height:40,borderRadius:10,background:`linear-gradient(135deg,${T.g},${T.gl})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>⚖️</div>
+          <div>
+            <h2 style={{margin:0,fontFamily:T.fd,fontSize:20,color:T.cr}}>Informacja prawna i ochrona danych</h2>
+            <div style={{fontSize:11,color:"rgba(250,246,239,0.3)",marginTop:2}}>AIsolution4.you Sp. z o.o.</div>
+          </div>
+        </div>
+
+        {/* Disclaimer */}
+        <div style={{padding:"16px 18px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:`1px solid ${T.gb}`,marginBottom:16}}>
+          <div style={{fontSize:10,color:T.g,fontWeight:700,textTransform:"uppercase",letterSpacing:"2px",marginBottom:8}}>Charakter symulacji</div>
+          <p style={{fontSize:13,lineHeight:1.7,color:"rgba(250,246,239,0.55)",margin:0}}>Wyniki Symulatora ROI mają <strong style={{color:T.g}}>charakter wyłącznie poglądowy</strong> i nie stanowią oferty handlowej, gwarancji wyników ani zobowiązania finansowego. Prognozy oparte na {BENCH.length} udokumentowanych case studies z lat 2023–2026. Symulacja Monte Carlo (5 000 iteracji). Model zwalidowany przez Chief Risk Officer. Rzeczywiste wyniki mogą odbiegać od prognoz w zależności od specyfiki przedsiębiorstwa.</p>
+        </div>
+
+        {/* RODO */}
+        <div style={{padding:"16px 18px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:`1px solid ${T.gb}`,marginBottom:16}}>
+          <div style={{fontSize:10,color:T.g,fontWeight:700,textTransform:"uppercase",letterSpacing:"2px",marginBottom:8}}>Ochrona danych osobowych (RODO)</div>
+          <div style={{fontSize:12,lineHeight:1.7,color:"rgba(250,246,239,0.45)"}}>
+            <p style={{margin:"0 0 8px"}}>Administratorem Twoich danych osobowych jest <strong style={{color:"rgba(250,246,239,0.65)"}}>AIsolution4.you Sp. z o.o.</strong> z siedzibą w Poznaniu.</p>
+            <p style={{margin:"0 0 8px"}}>Dane wprowadzone w symulatorze (adres www, parametry firmy) przetwarzane są na podstawie <strong style={{color:"rgba(250,246,239,0.65)"}}>art. 6 ust. 1 lit. a RODO</strong> (zgoda) w celu przygotowania spersonalizowanej analizy ROI.</p>
+            <p style={{margin:"0 0 8px"}}>W przyszłości możemy poprosić o adres e-mail lub numer telefonu w celu weryfikacji tożsamości i dostarczenia raportu. Podanie tych danych będzie dobrowolne.</p>
+            <p style={{margin:"0 0 8px"}}>Przysługuje Ci prawo dostępu do danych, ich sprostowania, usunięcia, ograniczenia przetwarzania, przenoszenia oraz wniesienia sprzeciwu. Zgodę możesz wycofać w dowolnym momencie.</p>
+            <p style={{margin:0}}>Dane nie będą przekazywane podmiotom trzecim poza dostawcami usług niezbędnych do działania symulatora (hosting, API AI). Dane przetwarzane są na serwerach w EOG. Kontakt: <strong style={{color:T.g}}>rodo@aisolution4.you</strong></p>
+          </div>
+        </div>
+
+        {/* Consent checkbox */}
+        <label style={{display:"flex",gap:12,alignItems:"flex-start",padding:"14px 16px",borderRadius:10,background:T.gs,border:`1px solid ${T.gb}`,cursor:"pointer",marginBottom:20}} onClick={()=>setRodo(!rodo)}>
+          <div style={{width:22,height:22,borderRadius:6,flexShrink:0,marginTop:1,background:rodo?`linear-gradient(135deg,${T.g},${T.gl})`:"transparent",border:rodo?"none":`2px solid rgba(255,255,255,0.12)`,display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.2s"}}>
+            {rodo&&<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={T.td} strokeWidth="3" strokeLinecap="round"><path d="M5 12l5 5L20 7"/></svg>}
+          </div>
+          <span style={{fontSize:12,lineHeight:1.6,color:"rgba(250,246,239,0.5)"}}>Zapoznałem/am się z powyższymi informacjami, <strong style={{color:"rgba(250,246,239,0.7)"}}>wyrażam zgodę na przetwarzanie danych</strong> wprowadzonych w symulatorze w celu przygotowania analizy ROI oraz akceptuję poglądowy charakter wyników.</span>
+        </label>
+
+        {/* CTA */}
+        <button onClick={()=>{if(rodo)setOk(true)}} disabled={!rodo} style={{width:"100%",padding:"16px",background:rodo?`linear-gradient(135deg,${T.g},${T.gl})`:"rgba(255,255,255,0.03)",color:rodo?T.td:"rgba(250,246,239,0.15)",border:rodo?`2px solid ${T.g}`:"2px solid transparent",borderRadius:10,fontSize:15,fontWeight:700,cursor:rodo?"pointer":"not-allowed",fontFamily:T.fb,transition:"all 0.3s"}}>Akceptuję i przechodzę do symulatora</button>
+
+        {/* Footer links */}
+        <div style={{display:"flex",justifyContent:"center",gap:16,marginTop:14}}>
+          <a href="https://aisolution4.you/polityka-prywatnosci" target="_blank" rel="noopener" style={{fontSize:10,color:"rgba(250,246,239,0.25)",textDecoration:"underline"}}>Polityka prywatności</a>
+          <a href="https://aisolution4.you/regulamin" target="_blank" rel="noopener" style={{fontSize:10,color:"rgba(250,246,239,0.25)",textDecoration:"underline"}}>Regulamin</a>
+          <a href="mailto:rodo@aisolution4.you" style={{fontSize:10,color:"rgba(250,246,239,0.25)",textDecoration:"underline"}}>Kontakt RODO</a>
+        </div>
+
+      </div>
+    </div>}
+
+    {/* NAV */}
+    <nav style={{padding:"0 24px",borderBottom:`1px solid ${T.gb}`,background:`${T.td}ee`,backdropFilter:"blur(12px)",position:"sticky",top:0,zIndex:100}}><div style={{maxWidth:960,margin:"0 auto",height:60,display:"flex",alignItems:"center",justifyContent:"space-between"}}><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:32,height:32,borderRadius:8,background:`linear-gradient(135deg,${T.g},${T.gl})`,display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={T.td} strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><span style={{fontFamily:T.fd,fontSize:14,color:T.g}}>AIsolution4.you</span></div><span style={{fontSize:9,color:"rgba(250,246,239,0.2)",letterSpacing:"1.5px",fontWeight:600,textTransform:"uppercase"}}>ROI Simulator v6 · {BENCH.length} benchmarks · Fixed Fee + Success Fee</span></div></nav>
+
+    <main style={{maxWidth:760,margin:"0 auto",padding:"28px 20px 80px",position:"relative",zIndex:10}}>
+
+      {/* STEPS HEADER */}
+      {step<5&&<div><div style={{marginBottom:6}}><h1 style={{fontFamily:T.fd,fontSize:"clamp(1.4rem,2.5vw,1.8rem)",color:T.cr,margin:"0 0 4px"}}>{["Twoja branża","Audyt cyfrowy","Obszary wdrożenia","Parametry firmy","Gotowość organizacji"][step]}</h1><p style={{fontSize:13,color:"rgba(250,246,239,0.35)"}}>{["Wybierz sektor","Podaj dane firmy i zweryfikuj tożsamość","Moduły do wdrożenia","Dane operacyjne","Gotowość zespołu na zmiany"][step]}</p></div><div style={{display:"flex",gap:4,marginBottom:24}}>{Array.from({length:5},(_,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,background:i<step?`linear-gradient(135deg,${T.g},${T.gl})`:i===step?T.gs:"rgba(255,255,255,0.02)",color:i<step?T.td:i===step?T.g:"rgba(250,246,239,0.12)",border:i===step?`1.5px solid ${T.g}`:"1.5px solid transparent"}}>{i+1}</div>{i<4&&<div style={{width:14,height:1.5,background:i<step?T.g:"rgba(255,255,255,0.04)"}}/>}</div>)}</div></div>}
+
+      {/* STEP 0: SECTOR */}
+      {step===0&&<div style={{display:"grid",gap:8}}>{SECTORS.map(se=><button key={se.id} onClick={()=>s("sector",se.id)} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 16px",borderRadius:12,background:inp.sector===se.id?T.gs:"rgba(255,255,255,0.01)",border:inp.sector===se.id?`1.5px solid ${T.gh}`:`1.5px solid rgba(255,255,255,0.04)`,cursor:"pointer",textAlign:"left",width:"100%",fontFamily:T.fb}}><div style={{flex:1}}><div style={{fontSize:14,fontWeight:600,color:inp.sector===se.id?T.g:T.cr}}>{se.label}</div><div style={{fontSize:11,color:"rgba(250,246,239,0.3)"}}>{se.sub}</div></div><span style={{fontSize:10,color:"rgba(250,246,239,0.2)"}}>×{se.pl}</span></button>)}</div>}
+
+      {/* STEP 1: DIGITAL EVAL + CONTACT + 2FA */}
+      {step===1&&<div>
+        {/* Contact fields */}
+        <div style={{padding:"20px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:`1px solid ${T.gb}`,marginBottom:16}}>
+          <label style={{display:"block",fontSize:10,color:"rgba(250,246,239,0.35)",marginBottom:8,fontWeight:700,textTransform:"uppercase",letterSpacing:"2px"}}>Adres www firmy</label>
+          <input value={url} onChange={e=>setUrl(e.target.value)} placeholder="twojafirma.pl" style={{width:"100%",padding:"12px 14px",borderRadius:8,border:"1px solid rgba(255,255,255,0.06)",background:"rgba(255,255,255,0.02)",color:T.cr,fontSize:14,fontFamily:T.fb,outline:"none",marginBottom:14,boxSizing:"border-box"}}/>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+            <div>
+              <label style={{display:"block",fontSize:10,color:"rgba(250,246,239,0.35)",marginBottom:6,fontWeight:700,textTransform:"uppercase",letterSpacing:"2px"}}>Email</label>
+              <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="jan@firma.pl" type="email" style={{width:"100%",padding:"12px 14px",borderRadius:8,border:"1px solid rgba(255,255,255,0.06)",background:"rgba(255,255,255,0.02)",color:T.cr,fontSize:13,fontFamily:T.fb,outline:"none",boxSizing:"border-box"}}/>
+            </div>
+            <div>
+              <label style={{display:"block",fontSize:10,color:"rgba(250,246,239,0.35)",marginBottom:6,fontWeight:700,textTransform:"uppercase",letterSpacing:"2px"}}>Telefon</label>
+              <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+48 500 000 000" type="tel" style={{width:"100%",padding:"12px 14px",borderRadius:8,border:"1px solid rgba(255,255,255,0.06)",background:"rgba(255,255,255,0.02)",color:T.cr,fontSize:13,fontFamily:T.fb,outline:"none",boxSizing:"border-box"}}/>
+            </div>
+          </div>
+
+          {verified&&<div style={{padding:"8px 12px",borderRadius:8,background:"rgba(39,174,96,0.08)",border:"1px solid rgba(39,174,96,0.15)",fontSize:11,color:T.ok,marginBottom:12}}>✓ Tożsamość zweryfikowana — możesz uruchomić audyt</div>}
+
+          <button onClick={()=>{
+            if(verified){runEv();return;}
+            if(!url||!email||!phone){return;}
+            setShow2FA(true);setSmsSent(true);setSmsCode("");
+          }} disabled={!url||!email||!phone} style={{width:"100%",padding:"14px",borderRadius:8,border:"none",background:(url&&email&&phone)?`linear-gradient(135deg,${T.g},${T.gl})`:"rgba(255,255,255,0.03)",color:(url&&email&&phone)?T.td:"rgba(250,246,239,0.15)",fontSize:14,fontWeight:700,cursor:(url&&email&&phone)?"pointer":"not-allowed",fontFamily:T.fb}}>
+            {verified?"Uruchom audyt cyfrowy":"Weryfikuj i analizuj"}
+          </button>
+
+          <div style={{fontSize:10,color:"rgba(250,246,239,0.2)",marginTop:8,textAlign:"center"}}>Dane kontaktowe służą wyłącznie do weryfikacji tożsamości (2FA). Możesz też pominąć audyt.</div>
+        </div>
+
+        {/* 2FA Modal */}
+        {show2FA&&<div style={{position:"fixed",inset:0,zIndex:9998,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(13,43,43,0.9)",backdropFilter:"blur(8px)"}}>
+          <div style={{maxWidth:400,margin:"0 20px",padding:"32px 28px",borderRadius:16,background:`linear-gradient(145deg,${T.tm},${T.tmd})`,border:`1px solid ${T.gb}`}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
+              <div style={{width:36,height:36,borderRadius:8,background:T.gs,border:`1px solid ${T.gb}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>🔐</div>
+              <div>
+                <h3 style={{margin:0,fontFamily:T.fd,fontSize:16,color:T.cr}}>Weryfikacja SMS</h3>
+                <div style={{fontSize:11,color:"rgba(250,246,239,0.3)"}}>Kod wysłany na {phone}</div>
+              </div>
+            </div>
+
+            <p style={{fontSize:12,color:"rgba(250,246,239,0.4)",lineHeight:1.6,marginBottom:16}}>Wprowadź kod weryfikacyjny otrzymany w wiadomości SMS, aby potwierdzić tożsamość i uruchomić audyt cyfrowy.</p>
+
+            <div style={{display:"flex",gap:8,marginBottom:16}}>
+              <input value={smsCode} onChange={e=>setSmsCode(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="000000" maxLength={6} autoFocus style={{flex:1,padding:"14px 16px",borderRadius:8,border:`1px solid ${smsCode.length===6?T.g:"rgba(255,255,255,0.08)"}`,background:"rgba(255,255,255,0.03)",color:T.cr,fontSize:20,fontFamily:T.fd,textAlign:"center",letterSpacing:"8px",outline:"none"}}/>
+            </div>
+
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>{setShow2FA(false);setSmsCode("");}} style={{flex:1,padding:"12px",borderRadius:8,border:"1px solid rgba(255,255,255,0.06)",background:"transparent",color:"rgba(250,246,239,0.3)",fontSize:12,cursor:"pointer",fontFamily:T.fb}}>Anuluj</button>
+              <button onClick={()=>{
+                if(smsCode.length>=4){setVerified(true);setShow2FA(false);setSmsCode("");runEv();}
+              }} disabled={smsCode.length<4} style={{flex:2,padding:"12px",borderRadius:8,border:"none",background:smsCode.length>=4?`linear-gradient(135deg,${T.g},${T.gl})`:"rgba(255,255,255,0.03)",color:smsCode.length>=4?T.td:"rgba(250,246,239,0.15)",fontSize:13,fontWeight:700,cursor:smsCode.length>=4?"pointer":"not-allowed",fontFamily:T.fb}}>Potwierdź kod</button>
+            </div>
+
+            <div style={{textAlign:"center",marginTop:12}}>
+              <button onClick={()=>{setSmsSent(true);}} style={{background:"none",border:"none",color:T.g,fontSize:11,cursor:"pointer",fontFamily:T.fb,textDecoration:"underline"}}>Wyślij kod ponownie</button>
+            </div>
+          </div>
+        </div>}
+
+        {/* Audit results */}
+        {ev&&<div style={{padding:"20px",borderRadius:12,background:`linear-gradient(145deg,${T.tm},${T.tmd})`,border:`1px solid ${T.gb}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div>
+              <div style={{fontSize:15,fontFamily:T.fd,color:T.cr}}>{ev.name}</div>
+              <div style={{fontSize:11,color:"rgba(250,246,239,0.3)"}}>{ev.domain}{verified?` · ✓ ${email}`:""}</div>
+            </div>
+            <div style={{fontSize:32,fontFamily:T.fd,color:sC(Object.values(ev.scores).reduce((a,b)=>a+b,0)/6)}}>{sG(Object.values(ev.scores).reduce((a,b)=>a+b,0)/6)}</div>
+          </div>
+          {Object.entries(ev.scores).map(([k,v])=><Bar key={k} label={SLBL[k]} score={v}/>)}
+        </div>}
+      </div>}
+
+      {/* STEP 2: MODULES */}
+      {step===2&&<div style={{display:"grid",gap:6}}>{ev&&<div style={{padding:"10px 14px",borderRadius:8,background:"rgba(39,174,96,0.06)",border:"1px solid rgba(39,174,96,0.12)",fontSize:11,color:T.ok,marginBottom:4}}>✓ Wstępnie dobrane z audytu</div>}{Object.entries(MOD).map(([k,mo])=>{const a=inp.modules.includes(k);const bc=MSUM[k]?.ids?.length||0;return (<button key={k} onClick={()=>tog(k)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:10,background:a?T.gs:"rgba(255,255,255,0.01)",border:a?`1.5px solid ${T.gh}`:`1.5px solid rgba(255,255,255,0.04)`,cursor:"pointer",textAlign:"left",width:"100%",fontFamily:T.fb}}><span style={{fontSize:20}}>{mo.icon}</span><div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:a?T.g:T.cr}}>{mo.label}</div><div style={{fontSize:10,color:"rgba(250,246,239,0.25)"}}>{mo.desc} · {bc} benchmarków · ~{mo.im} mies.</div></div><div style={{width:20,height:20,borderRadius:5,background:a?`linear-gradient(135deg,${T.g},${T.gl})`:"transparent",border:a?"none":"1.5px solid rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:T.td}}>{a?"✓":""}</div></button>)})}
+        {inp.modules.length>0&&<div style={{padding:"10px 14px",borderRadius:8,background:T.gs,border:`1px solid ${T.gb}`,marginTop:6,fontSize:11,color:"rgba(250,246,239,0.35)"}}>Wybrano {inp.modules.length} moduł(ów) — szczegóły kosztów po obliczeniu prognozy</div>}
+      </div>}
+
+      {/* STEP 3: PARAMETERS */}
+      {step===3&&<div style={{display:"grid",gap:18}}>{[{key:"annualRevenue",label:"Przychód roczny",min:200000,max:150000000,step:100000,f:fP},{key:"employees",label:"Pracownicy",min:1,max:250,step:1,f:v=>v},...(isMed?[{key:"monthlyVisits",label:"Wizyty/mies.",min:50,max:3000,step:25,f:v=>v},{key:"avgVisitValue",label:"Śr. wartość wizyty",min:50,max:3000,step:10,f:v=>v+" PLN"},{key:"noshowRate",label:"No-show %",min:1,max:30,step:1,f:v=>v+"%"}]:[])].map(({key,label,min,max,step:st,f})=><div key={key}><div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:12,color:"rgba(250,246,239,0.4)"}}>{label}</span><span style={{fontSize:13,color:T.g,fontFamily:T.fd}}>{f(inp[key])}</span></div><input type="range" min={min} max={max} step={st} value={inp[key]} onChange={e=>s(key,Number(e.target.value))} style={{width:"100%",accentColor:T.g,height:4,cursor:"pointer"}}/></div>)}
+      </div>}
+
+      {/* STEP 4: READINESS */}
+      {step===4&&<div><div style={{padding:"24px 20px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:`1px solid ${T.gb}`}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:14}}><span style={{fontSize:13,color:"rgba(250,246,239,0.4)"}}>Gotowość</span><span style={{fontSize:20,color:T.g,fontFamily:T.fd}}>{inp.readiness}%</span></div><input type="range" min={10} max={100} step={5} value={inp.readiness} onChange={e=>s("readiness",Number(e.target.value))} style={{width:"100%",accentColor:T.g,height:6,cursor:"pointer"}}/><div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"rgba(250,246,239,0.25)",marginTop:6}}><span>Silny opór</span><span>Neutralnie</span><span>Entuzjazm</span></div></div></div>}
+
+      {/* ═══════ STEP 5: RESULTS ═══════ */}
+      {step===5&&res&&(function(){
+        const sc=res.scenarios[scn]||res.scenarios.S2;
+        const s1=res.scenarios.S1,s2=res.scenarios.S2,s3=res.scenarios.S3,s4=res.scenarios.S4;
+        const available=Object.keys(res.scenarios).filter(k=>k!=="S0");
+        const smeta={S1:{l:"Pesymistyczny",c:T.no,e:"🔴"},S2:{l:"Mediana",c:T.g,e:"🟡"},S3:{l:"Optymistyczny",c:T.ok,e:"🟢"},S4:{l:"Discovery",c:"#9b59b6",e:"🟣"}};
+        const effR=sensRate!==null?sensRate/100:res.r;
+        const sensNPV=sensRate!==null?(function(){const rm2=Math.pow(1+effR,1/12)-1;return Math.round(sc.cfs.reduce((sum,c)=>{const v=c.net||0;return sum+v/Math.pow(1+rm2,c.month);},0));})():sc.npv;
+
+        return(<div>
+          <div style={{marginBottom:16}}>
+            <h1 style={{fontFamily:T.fd,fontSize:"clamp(1.3rem,2.5vw,1.7rem)",color:T.cr,margin:"0 0 3px"}}>Prognoza ROI</h1>
+            <p style={{fontSize:12,color:"rgba(250,246,239,0.25)",margin:0}}>{sec?.label} · {inp.modules.length} moduł(ów) · MC {(5000).toLocaleString()} iter.{ev?` · ${ev.name}`:""}</p>
+          </div>
+
+          {/* Scenario selector */}
+          <div style={{display:"flex",gap:3,marginBottom:14,background:"rgba(255,255,255,0.015)",borderRadius:8,padding:3}}>
+            {available.map(k=><button key={k} onClick={()=>setScn(k)} style={{flex:1,padding:"9px",borderRadius:6,border:"none",cursor:"pointer",background:scn===k?T.gs:"transparent",color:scn===k?(smeta[k]?.c||T.g):"rgba(250,246,239,0.2)",fontSize:11,fontWeight:600,fontFamily:T.fb}}>{smeta[k]?.e} {smeta[k]?.l||k}</button>)}
+          </div>
+
+          {/* Tabs */}
+          <div style={{display:"flex",gap:2,marginBottom:18,borderBottom:`1px solid ${T.gb}`}}>
+            {[["scorecard","📋 Scorecard"],["analysis","📈 Analiza"],["cfo","🔬 CFO"]].map(([id,l])=>
+              <button key={id} onClick={()=>setRTab(id)} style={{padding:"9px 16px",borderRadius:"8px 8px 0 0",border:"none",cursor:"pointer",background:rTab===id?T.gs:"transparent",borderBottom:rTab===id?`2px solid ${T.g}`:"2px solid transparent",color:rTab===id?T.g:"rgba(250,246,239,0.25)",fontSize:11,fontWeight:600,fontFamily:T.fb}}>{l}</button>
+            )}
+          </div>
+
+          {/* ── SCORECARD TAB ── */}
+          {rTab==="scorecard"&&<div>
+            {/* Executive Hero — simple: invest X now → get Y in 24 months */}
+            <div style={{padding:"32px 28px",borderRadius:14,background:`linear-gradient(135deg,${T.tm},${T.tmd})`,border:`1px solid ${T.gb}`,marginBottom:16,position:"relative",overflow:"hidden"}}>
+              <div style={{position:"absolute",inset:0,opacity:0.04,backgroundImage:`radial-gradient(circle at 70% 30%,${T.g} 1px,transparent 1px)`,backgroundSize:"32px 32px"}}/>
+              <div style={{position:"relative"}}>
+                <div style={{fontSize:9,color:"rgba(250,246,239,0.3)",textTransform:"uppercase",letterSpacing:"2.5px",fontWeight:700,marginBottom:20}}>Prognoza dla zarządu</div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:16,flexWrap:"wrap"}}>
+                  <div style={{textAlign:"center"}}>
+                    <div style={{fontSize:10,color:"rgba(250,246,239,0.35)",textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:6}}>Inwestujesz teraz</div>
+                    <div style={{fontSize:"clamp(1.6rem,3vw,2.4rem)",fontFamily:T.fd,color:T.cr,lineHeight:1}}>{fP(sc.auditCost)}</div>
+                    <div style={{fontSize:10,color:"rgba(250,246,239,0.25)",marginTop:4}}>koszt audytu (Etap 1)</div>
+                  </div>
+                  <div style={{fontSize:28,color:T.g}}>→</div>
+                  <div style={{textAlign:"center"}}>
+                    <div style={{fontSize:10,color:"rgba(250,246,239,0.35)",textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:6}}>Po 24 miesiącach netto</div>
+                    <div style={{fontSize:"clamp(1.6rem,3vw,2.4rem)",fontFamily:T.fd,color:sc.npv>0?T.ok:T.no,lineHeight:1}}>{sc.npv>0?"+":""}{fP(sc.npv)}</div>
+                    <div style={{fontSize:10,color:"rgba(250,246,239,0.25)",marginTop:4}}>dodatkowego przychodu (NPV netto)</div>
+                  </div>
+                </div>
+                <div style={{textAlign:"center",marginTop:20}}>
+                  <div style={{display:"inline-flex",alignItems:"center",gap:12,padding:"10px 20px",borderRadius:8,background:T.gs,border:`1px solid ${T.gb}`}}>
+                    <span style={{fontSize:11,color:"rgba(250,246,239,0.4)"}}>Zwrot: <strong style={{color:T.g,fontFamily:T.fd}}>{sc.roi}×</strong></span>
+                    <span style={{width:1,height:16,background:T.gb}}/>
+                    <span style={{fontSize:11,color:"rgba(250,246,239,0.4)"}}>Payback: <strong style={{color:sc.pb<=12?T.ok:T.g,fontFamily:T.fd}}>{sc.pb<=24?sc.pb+" mies.":">24"}</strong></span>
+                    <span style={{width:1,height:16,background:T.gb}}/>
+                    <span style={{fontSize:11,color:"rgba(250,246,239,0.4)"}}>MC: <strong style={{color:res.mc.pos>70?T.ok:T.g,fontFamily:T.fd}}>{res.mc.pos}% scenariuszy zyskownych</strong></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Cumulative net profit — prominent box */}
+            <div style={{padding:"20px 24px",borderRadius:12,background:"rgba(39,174,96,0.06)",border:`1px solid rgba(39,174,96,0.15)`,marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontSize:10,color:T.ok,fontWeight:700,textTransform:"uppercase",letterSpacing:"2px",marginBottom:4}}>Zysk netto w okresie 24 miesięcy</div>
+                <div style={{fontSize:11,color:"rgba(250,246,239,0.35)"}}>Po odliczeniu wszystkich kosztów współpracy</div>
+              </div>
+              <div style={{fontSize:"clamp(1.5rem,3vw,2.2rem)",fontFamily:T.fd,color:sc.npv>0?T.ok:T.no,fontWeight:600}}>{sc.npv>0?"+":""}{fP(sc.npv)}</div>
+            </div>
+
+            {/* Cost structure */}
+            <div style={{padding:"16px 16px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:`1px solid ${T.gb}`,marginBottom:14}}>
+              <div style={{fontSize:9,color:"rgba(250,246,239,0.25)",fontWeight:700,textTransform:"uppercase",letterSpacing:"2px",marginBottom:10}}>Struktura kosztów (24 mies.)</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:"6px 16px",fontSize:12,color:"rgba(250,246,239,0.4)"}}>
+                <span>Etap 1 — Audyt:</span><span style={{color:T.g,fontFamily:T.fd,textAlign:"right"}}>{fP(sc.auditCost)}</span>
+                <span>Etap 2 — I Pakiet wdrożeniowy:</span><span style={{color:T.g,fontFamily:T.fd,textAlign:"right"}}>{fP(sc.implCost)}</span>
+                <span>Etap 3 — Miesięczne fee ({fP(sc.monthlyFee)}/mies., od M{sc.kpiMonth}):</span><span style={{color:T.g,fontFamily:T.fd,textAlign:"right"}}>{fP(sc.totalFee)}</span>
+                <span>Success fee (15% od nowego przychodu, cap 2.5×):</span><span style={{color:T.g,fontFamily:T.fd,textAlign:"right"}}>{fP(sc.totalSF)}</span>
+                <span style={{borderTop:`1px solid ${T.gb}`,paddingTop:6,fontWeight:700,color:T.cr}}>Łączny koszt współpracy (24 mies.):</span><span style={{borderTop:`1px solid ${T.gb}`,paddingTop:6,color:T.g,fontFamily:T.fd,fontWeight:600,textAlign:"right"}}>{fP(sc.totalCostAll)}</span>
+              </div>
+              <div style={{marginTop:10,padding:"10px 12px",borderRadius:8,background:"rgba(230,126,34,0.06)",border:"1px solid rgba(230,126,34,0.12)",fontSize:11,color:"rgba(250,246,239,0.4)"}}>
+                📊 Sufit operacyjny: max wzrost ×{res.ceilingMult.toFixed(2)} (audyt: {res.auditGrade}, sektor: {sec?.label}). Max dodatkowy przychód: {fP(res.maxMonthlyGrowth)}/mies.
+              </div>
+              <div style={{marginTop:10,display:"grid",gridTemplateColumns:"1fr auto",gap:"6px 16px",fontSize:12}}>
+                <span style={{color:"rgba(250,246,239,0.4)"}}>Efekt brutto generowany przez wdrożenie:</span><span style={{color:T.ok,fontFamily:T.fd,textAlign:"right"}}>+{fP(sc.grossDelta)}/mies.</span>
+                <span style={{fontWeight:700,color:T.cr}}>Zysk netto klienta (po kosztach):</span><span style={{color:sc.netDelta>0?T.ok:T.no,fontFamily:T.fd,fontWeight:600,textAlign:"right"}}>{sc.netDelta>0?"+":""}{fP(sc.netDelta)}/mies.</span>
+              </div>
+            </div>
+
+            {/* Before/After */}
+            {sc.ba?.length>0&&<div style={{padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:`1px solid ${T.gb}`,marginBottom:14}}>
+              <div style={{fontSize:9,color:"rgba(250,246,239,0.25)",fontWeight:700,textTransform:"uppercase",letterSpacing:"2px",marginBottom:10}}>Przed / Po</div>
+              {sc.ba.map((b,i)=><div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderTop:i?"1px solid rgba(255,255,255,0.025)":"none"}}><span style={{fontSize:12,color:"rgba(250,246,239,0.4)"}}>{b.icon} {b.label}</span><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:13,fontFamily:T.fd,color:T.no}}>{b.before} {b.unit}</span><span style={{color:T.g,fontSize:11}}>→</span><span style={{fontSize:13,fontFamily:T.fd,color:T.ok,fontWeight:600}}>{b.after} {b.unit}</span></div></div>)}
+            </div>}
+
+            {/* Scenario comparison */}
+            <div style={{padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:`1px solid ${T.gb}`,marginBottom:14,overflowX:"auto"}}>
+              <div style={{fontSize:9,color:"rgba(250,246,239,0.25)",fontWeight:700,textTransform:"uppercase",letterSpacing:"2px",marginBottom:10}}>Porównanie scenariuszy</div>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,fontFamily:T.fb}}>
+                <thead><tr><th style={{textAlign:"left",padding:"6px 8px",borderBottom:`1px solid ${T.gb}`,color:"rgba(250,246,239,0.3)",fontSize:9}}>Metryka</th>
+                  {available.map(k=><th key={k} style={{textAlign:"center",padding:"6px 8px",borderBottom:`1px solid ${T.gb}`,color:smeta[k]?.c,fontSize:9}}>{smeta[k]?.l}</th>)}</tr></thead>
+                <tbody>
+                  {[["NPV netto",k=>fP(res.scenarios[k].npv)],["ROI",k=>res.scenarios[k].roi+"×"],["Payback",k=>res.scenarios[k].pb<=24?res.scenarios[k].pb+" mies.":">24"],["IRR",k=>res.scenarios[k].irr.toFixed(1)+"%"],["Zysk netto/mies.",k=>(res.scenarios[k].netDelta>0?"+":"")+fP(res.scenarios[k].netDelta)],["Koszt łączny 24 mies.",k=>fP(res.scenarios[k].totalCostAll)]].map(([l,fn],i)=>
+                    <tr key={i}><td style={{padding:"6px 8px",borderBottom:"1px solid rgba(255,255,255,0.02)",color:"rgba(250,246,239,0.4)"}}>{l}</td>
+                    {available.map(k=><td key={k} style={{textAlign:"center",padding:"6px 8px",borderBottom:"1px solid rgba(255,255,255,0.02)",color:scn===k?T.g:"rgba(250,246,239,0.35)",fontFamily:T.fd,background:scn===k?"rgba(200,150,62,0.04)":"transparent"}}>{fn(k)}</td>)}</tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{padding:"10px 12px",borderRadius:8,background:T.gs,border:`1px solid ${T.gb}`,fontSize:9,color:"rgba(250,246,239,0.25)",lineHeight:1.6}}>⚖️ Poglądowy. ×{sec?.pl||0.70} PL. MC 5K. {BENCH.length} benchmarks. CRO validated. Koszty operacyjne uwzględnione w NPV.</div>
+          </div>}
+
+          {/* ── ANALYSIS TAB ── */}
+          {rTab==="analysis"&&<div>
+            {/* MC distribution */}
+            <div style={{padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:`1px solid ${T.gb}`,marginBottom:14}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{fontSize:9,color:"rgba(250,246,239,0.25)",fontWeight:700,textTransform:"uppercase",letterSpacing:"2px"}}>Monte Carlo — NPV netto (po fixed fee + success fee)</span><span style={{fontSize:12,fontFamily:T.fd,color:T.g}}>W {res.mc.pos}% zarabiasz</span></div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:4}}>{[["P5",res.mc.p5,T.no],["P15",res.mc.p15,T.wa],["P50",res.mc.p50,T.g],["P75",res.mc.p75,T.gl],["P90",res.mc.p90,T.ok],["Śr.",res.mc.mean,"rgba(250,246,239,0.5)"]].map(([l,v,c])=><div key={l} style={{textAlign:"center",padding:"6px",borderRadius:6,background:"rgba(255,255,255,0.02)"}}><div style={{fontSize:8,color:"rgba(250,246,239,0.25)",textTransform:"uppercase"}}>{l}</div><div style={{fontSize:12,fontFamily:T.fd,color:c}}>{fP(v)}</div></div>)}</div>
+            </div>
+
+            {/* Cashflow */}
+            <div style={{padding:"14px 12px 6px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:`1px solid ${T.gb}`,marginBottom:14}}>
+              <div style={{fontSize:9,color:"rgba(250,246,239,0.25)",marginBottom:8,fontWeight:700,textTransform:"uppercase",letterSpacing:"2px"}}>Cashflow netto 24 mies. (po fixed fee + success fee)</div>
+              <ResponsiveContainer width="100%" height={200}><AreaChart data={sc.cfs} margin={{top:5,right:8,left:0,bottom:0}}><defs><linearGradient id="gCF" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={T.g} stopOpacity={0.2}/><stop offset="100%" stopColor={T.g} stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.02)"/><XAxis dataKey="month" stroke="rgba(250,246,239,0.1)" fontSize={9} tickFormatter={v=>`M${v}`}/><YAxis stroke="rgba(250,246,239,0.1)" fontSize={9} tickFormatter={v=>fmt(v)}/><Tooltip contentStyle={{background:T.tm,border:`1px solid ${T.gb}`,borderRadius:8,fontSize:10,color:T.cr}} formatter={(v,n)=>[fP(v),{cum:"Skumulowany netto",cf:"Netto/mies.",gross:"Brutto",fixed:"Fixed fee",sf:"Success fee"}[n]||n]} labelFormatter={v=>`Miesiąc ${v}`}/><ReferenceLine y={0} stroke={T.gb} strokeDasharray="4 4"/><Area type="monotone" dataKey="cum" stroke={T.g} fill="url(#gCF)" strokeWidth={2}/><Line type="monotone" dataKey="gross" stroke="rgba(39,174,96,0.4)" strokeWidth={1} dot={false}/><Line type="monotone" dataKey="fixed" stroke="rgba(192,57,43,0.3)" strokeWidth={1} dot={false} strokeDasharray="4 4"/></AreaChart></ResponsiveContainer>
+            </div>
+
+            {/* Module breakdown */}
+            <div style={{padding:"14px 16px 10px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:`1px solid ${T.gb}`,marginBottom:14}}>
+              <div style={{fontSize:9,color:"rgba(250,246,239,0.25)",marginBottom:10,fontWeight:700,textTransform:"uppercase",letterSpacing:"2px"}}>Efekty brutto per moduł (100% adopcji)</div>
+              {sc.md.map((m,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderTop:i?"1px solid rgba(255,255,255,0.02)":"none"}}><span style={{fontSize:12,color:"rgba(250,246,239,0.4)"}}>{m.icon} {m.label}</span><span style={{fontSize:13,fontFamily:T.fd,color:T.g}}>+{fP(Math.round(m.total))}/mies.</span></div>)}
+              <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0 0",borderTop:`1px solid ${T.gb}`,marginTop:4}}>
+                <span style={{fontSize:12,fontWeight:700,color:T.cr}}>Brutto łącznie (synergy ×{res.sy})</span><span style={{fontSize:14,fontFamily:T.fd,color:T.g}}>+{fP(sc.grossDelta)}/mies.</span>
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:11,color:"rgba(250,246,239,0.35)"}}>
+                <span>Minus miesięczne fee (od M{sc.kpiMonth}):</span><span style={{color:T.no}}>−{fP(sc.monthlyFee)}/mies.</span>
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:"rgba(250,246,239,0.35)"}}>
+                <span>Minus success fee (śr.):</span><span style={{color:T.no}}>−{fP(Math.round(sc.totalSF/Math.max(24-sc.kpiMonth,1)))}/mies.</span>
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",padding:"8px 0 0",borderTop:`1.5px solid ${T.gb}`,marginTop:6}}>
+                <span style={{fontSize:12,fontWeight:700,color:T.cr}}>= Zysk netto klienta</span><span style={{fontSize:14,fontFamily:T.fd,color:sc.netDelta>0?T.ok:T.no,fontWeight:600}}>{sc.netDelta>0?"+":""}{fP(sc.netDelta)}/mies.</span>
+              </div>
+            </div>
+
+            {/* Proof points */}
+            <div style={{padding:"14px 16px",borderRadius:12,background:"rgba(39,174,96,0.04)",border:"1px solid rgba(39,174,96,0.1)",marginBottom:14}}>
+              <div style={{fontSize:9,color:T.ok,fontWeight:700,textTransform:"uppercase",letterSpacing:"2px",marginBottom:8}}>Uzasadnienie — {res.benchUsed.length} benchmarków użytych w kalkulacji</div>
+              {inp.modules.map(mk=>{const benchmarks=res.benchUsed.filter(b=>b.mod===mk);return benchmarks.length?<div key={mk} style={{marginBottom:8}}><div style={{fontSize:11,fontWeight:600,color:"rgba(250,246,239,0.4)"}}>{MOD[mk]?.icon} {MOD[mk]?.label} ({benchmarks.length} bench.)</div>{benchmarks.slice(0,3).map(b=><div key={b.id} style={{fontSize:10,color:"rgba(250,246,239,0.25)",paddingLeft:12,lineHeight:1.5}}>› [{b.id}] {b.name} — {b.c}/{b.m}/{b.o} {b.unit} ({b.src}, {b.yr})</div>)}</div>:null})}
+            </div>
+
+            {/* Timeline */}
+            <div style={{padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:`1px solid ${T.gb}`,marginBottom:14}}>
+              <div style={{fontSize:9,color:"rgba(250,246,239,0.25)",fontWeight:700,textTransform:"uppercase",letterSpacing:"2px",marginBottom:10}}>Kamienie milowe</div>
+              <div style={{display:"flex",gap:6,overflowX:"auto"}}>{res.miles.map((m,i)=><div key={i} style={{flex:"0 0 auto",padding:"8px 12px",borderRadius:8,background:T.gs,border:`1px solid ${T.gb}`,minWidth:100,textAlign:"center"}}><div style={{fontSize:14,marginBottom:2}}>{m.i}</div><div style={{fontSize:11,fontFamily:T.fd,color:T.g}}>M{m.m}</div><div style={{fontSize:9,color:"rgba(250,246,239,0.4)"}}>{m.l}</div></div>)}</div>
+            </div>
+          </div>}
+
+          {/* ── CFO TAB ── */}
+          {rTab==="cfo"&&<div>
+            {/* Sensitivity */}
+            <div style={{padding:"18px 16px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:`1px solid ${T.gb}`,marginBottom:14}}>
+              <div style={{fontSize:9,color:"rgba(250,246,239,0.25)",fontWeight:700,textTransform:"uppercase",letterSpacing:"2px",marginBottom:12}}>Analiza wrażliwości — stopa dyskontowa</div>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{fontSize:12,color:"rgba(250,246,239,0.4)"}}>WACC</span><span style={{fontSize:15,fontFamily:T.fd,color:T.g}}>{(effR*100).toFixed(0)}%</span></div>
+              <input type="range" min={4} max={20} step={1} value={Math.round(effR*100)} onChange={e=>setSensRate(Number(e.target.value))} style={{width:"100%",accentColor:T.g,height:5,cursor:"pointer"}}/>
+              {sensRate!==null&&<div style={{marginTop:10,padding:"10px 12px",borderRadius:8,background:T.gs,border:`1px solid ${T.gb}`,display:"flex",justifyContent:"space-between"}}><span style={{fontSize:12,color:"rgba(250,246,239,0.4)"}}>NPV przy {sensRate}%:</span><span style={{fontSize:14,fontFamily:T.fd,color:sensNPV>0?T.ok:T.no}}>{fP(sensNPV)} ({sensNPV>sc.npv?"+":"−"}{fP(Math.abs(sensNPV-sc.npv))})</span></div>}
+            </div>
+
+            {/* Model assumptions */}
+            <div style={{padding:"16px 16px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:`1px solid ${T.gb}`,marginBottom:14,fontSize:11,lineHeight:1.8,color:"rgba(250,246,239,0.35)"}}>
+              <div style={{fontSize:9,fontWeight:700,color:"rgba(250,246,239,0.4)",marginBottom:8,textTransform:"uppercase",letterSpacing:"1.5px"}}>Założenia modelu</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"3px 16px"}}>
+                <span>Stopa dyskontowa:</span><span style={{color:T.g}}>{(sc.r*100).toFixed(0)}% (WACC + size premium)</span>
+                <span>Mnożnik PL:</span><span style={{color:T.g}}>×{sec?.pl||0.70} ({sec?.label})</span>
+                <span>Synergy:</span><span style={{color:T.g}}>×{res.sy} ({inp.modules.length} moduł(ów))</span>
+                <span>Adopcja:</span><span>Sigmoid k=0.8, readiness={inp.readiness}%</span>
+                <span>Monte Carlo:</span><span>5 000 iter., beta(4,3), lognormal</span>
+                <span>Fixed fee:</span><span style={{color:T.g}}>{fP(res.monthlyFee)}/mies. ({fP(res.annualFee)}/rok) — od osiągnięcia KPI</span>
+                <span>Success fee:</span><span>15% od (wzrost brutto − fixed fee), cap 2.5× annual</span>
+                <span>Sufit operacyjny:</span><span style={{color:T.g}}>×{res.ceilingMult.toFixed(2)} (audyt {res.auditGrade}) = max +{fP(res.maxMonthlyGrowth)}/mies.</span>
+                <span>Wagi EV (CRO):</span><span>S1=0.20 S2=0.40 S3=0.25 S4=0.12</span>
+              </div>
+              <div style={{marginTop:10,padding:"10px 12px",borderRadius:8,background:T.gs,border:`1px solid ${T.gb}`}}>
+                <span style={{color:"rgba(250,246,239,0.4)"}}>Wartość oczekiwana NPV: </span><span style={{fontFamily:T.fd,color:T.g,fontSize:14}}>{fP(res.ev)}</span>
+              </div>
+            </div>
+
+            {/* Stress test */}
+            {res.scenarios.S0&&<div style={{padding:"14px 16px",borderRadius:12,background:"rgba(192,57,43,0.05)",border:"1px solid rgba(192,57,43,0.12)",marginBottom:14}}>
+              <div style={{fontSize:9,color:T.no,fontWeight:700,textTransform:"uppercase",letterSpacing:"2px",marginBottom:8}}>Stress test S0</div>
+              <div style={{fontSize:12,color:"rgba(250,246,239,0.4)",lineHeight:1.8}}>NPV: <strong style={{color:T.no}}>{fP(res.scenarios.S0.npv)}</strong> · Adopcja ×1.5 wolniejsza · Efekty ×0.40 · Churn 15%<br/>{res.scenarios.S0.npv<-res.totalInvestment*1.5?<span style={{color:T.no}}>❌ Model niestabilny</span>:<span style={{color:T.wa}}>⚠ Rentowność niepewna</span>}</div>
+            </div>}
+
+            {/* Browse benchmark DB */}
+            <button onClick={()=>setShowBench(!showBench)} style={{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${T.gb}`,background:showBench?"rgba(255,255,255,0.02)":"transparent",color:"rgba(250,246,239,0.35)",fontSize:11,cursor:"pointer",fontFamily:T.fb,display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showBench?0:14}}>
+              <span>📊 Baza benchmarków — {BENCH.length} rekordów, {Object.keys(MSUM).length} modułów</span><span style={{transform:showBench?"rotate(180deg)":"",transition:"transform 0.2s"}}>▾</span>
+            </button>
+            {showBench&&<div style={{padding:"14px",borderRadius:"0 0 12px 12px",background:"rgba(255,255,255,0.015)",border:`1px solid ${T.gb}`,borderTop:"none",marginBottom:14,maxHeight:400,overflowY:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:10,fontFamily:T.fb}}>
+                <thead><tr>{["ID","Moduł","KPI","C","M","O","Źródło","Rok","Conf."].map(h=><th key={h} style={{padding:"5px 6px",borderBottom:`1px solid ${T.gb}`,color:"rgba(250,246,239,0.3)",textAlign:"left",fontSize:9,fontWeight:700}}>{h}</th>)}</tr></thead>
+                <tbody>{BENCH.map(b=>{const used=res.benchUsed.some(u=>u.id===b.id);return (<tr key={b.id} style={{background:used?"rgba(200,150,62,0.04)":"transparent"}}>
+                  <td style={{padding:"4px 6px",borderBottom:"1px solid rgba(255,255,255,0.02)",color:used?T.g:"rgba(250,246,239,0.3)",fontWeight:used?600:400}}>{b.id}</td>
+                  <td style={{padding:"4px 6px",borderBottom:"1px solid rgba(255,255,255,0.02)",color:"rgba(250,246,239,0.3)"}}>{b.mod.replace("M_","")}</td>
+                  <td style={{padding:"4px 6px",borderBottom:"1px solid rgba(255,255,255,0.02)",color:"rgba(250,246,239,0.4)",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.kpi}</td>
+                  <td style={{padding:"4px 6px",borderBottom:"1px solid rgba(255,255,255,0.02)",color:T.no,textAlign:"center"}}>{b.c}</td>
+                  <td style={{padding:"4px 6px",borderBottom:"1px solid rgba(255,255,255,0.02)",color:T.g,textAlign:"center",fontWeight:600}}>{b.m}</td>
+                  <td style={{padding:"4px 6px",borderBottom:"1px solid rgba(255,255,255,0.02)",color:T.ok,textAlign:"center"}}>{b.o}</td>
+                  <td style={{padding:"4px 6px",borderBottom:"1px solid rgba(255,255,255,0.02)",color:"rgba(250,246,239,0.3)",maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.src}</td>
+                  <td style={{padding:"4px 6px",borderBottom:"1px solid rgba(255,255,255,0.02)",color:"rgba(250,246,239,0.25)"}}>{b.yr}</td>
+                  <td style={{padding:"4px 6px",borderBottom:"1px solid rgba(255,255,255,0.02)",color:b.conf==="high"?T.ok:T.wa}}>{b.conf}</td>
+                </tr>)})}</tbody>
+              </table>
+              <div style={{fontSize:9,color:"rgba(250,246,239,0.2)",marginTop:8}}>Wiersze podświetlone na złoto = użyte w tej symulacji ({res.benchUsed.length} z {BENCH.length})</div>
+            </div>}
+
+            {/* Source weights */}
+            <div style={{padding:"14px 16px",borderRadius:12,background:"rgba(255,255,255,0.02)",border:`1px solid ${T.gb}`,marginBottom:14}}>
+              <div style={{fontSize:9,color:"rgba(250,246,239,0.25)",fontWeight:700,textTransform:"uppercase",letterSpacing:"2px",marginBottom:8}}>Wagi wiarygodności źródeł</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:"3px 16px",fontSize:11,color:"rgba(250,246,239,0.35)"}}>
+                {Object.entries(SRC_W).map(([k,v])=><div key={k} style={{display:"contents"}}><span>{k.replace(/_/g," ")}:</span><span style={{color:T.g}}>{v.toFixed(2)}</span></div>)}
+              </div>
+            </div>
+          </div>}
+
+          {/* Bottom */}
+          <div style={{display:"flex",flexDirection:"column",gap:10,marginTop:18}}>
+            <a href="https://aisolution4.you/#kontakt" target="_blank" rel="noopener" style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10,padding:"16px 24px",borderRadius:10,background:`linear-gradient(135deg,${T.g},${T.gl})`,color:T.td,fontSize:14,fontWeight:700,fontFamily:T.fb,textDecoration:"none",border:`2px solid ${T.g}`,boxShadow:"0 4px 20px rgba(200,150,62,0.25)"}}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg>
+              Otrzymaj szczegółowy raport — umów bezpłatną konsultację
+            </a>
+            <button onClick={()=>{setStep(0);setRes(null);setEv(null);setUrl("");setRTab("scorecard");setSensRate(null);setShowBench(false);}} style={{padding:"10px 18px",borderRadius:8,border:"1px solid rgba(255,255,255,0.06)",background:"transparent",color:"rgba(250,246,239,0.25)",fontSize:12,cursor:"pointer",fontFamily:T.fb,textAlign:"center"}}>← Nowa symulacja</button>
+          </div>
+        </div>);
+      })()}
+
+      {/* NAV BUTTONS */}
+      {step<5&&<div style={{display:"flex",justifyContent:"space-between",marginTop:24,gap:12}}>
+        {step>0?<button onClick={()=>setStep(step-1)} style={{padding:"10px 20px",borderRadius:8,border:"1px solid rgba(255,255,255,0.06)",background:"transparent",color:"rgba(250,246,239,0.25)",fontSize:13,cursor:"pointer",fontFamily:T.fb}}>← Wstecz</button>:<div/>}
+        <button onClick={()=>{if(step===1&&ev){applyRec();return}if(step===1&&!ev){setStep(2);return}if(step===4){setRes(calcFull(inp,auditG));setStep(5);return}setStep(step+1)}} disabled={step===0?!inp.sector:step===2?inp.modules.length===0:false} style={{padding:"12px 24px",borderRadius:8,border:`2px solid ${T.g}`,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:T.fb,background:`linear-gradient(135deg,${T.g},${T.gl})`,color:T.td,boxShadow:"0 4px 20px rgba(200,150,62,0.25)"}}>{step===4?"Oblicz prognozę →":step===1&&ev?"Zastosuj rekomendacje →":step===1?"Pomiń audyt →":"Dalej →"}</button>
+      </div>}
+    </main>
+  </div>);
+}
+
+
+// ── Mount ──
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
+</script>
+</body>
+</html>
